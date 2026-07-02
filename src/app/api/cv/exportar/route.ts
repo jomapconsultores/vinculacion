@@ -1,680 +1,421 @@
-import { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import {
-  Document,
-  Packer,
-  Paragraph,
-  TextRun,
-  HeadingLevel,
-  AlignmentType,
-  BorderStyle,
+  Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle,
+  Table, TableRow, TableCell, WidthType, ImageRun, VerticalAlign,
 } from "docx";
-import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, PDFFont, PDFImage } from "pdf-lib";
 import { createClient } from "@/lib/supabase/server";
 import type { CVAnalisis } from "@/lib/cv-types";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-// ---------------------------------------------------------------------------
-// Utilidades comunes
-// ---------------------------------------------------------------------------
+// Paleta
+const NAVY = rgb(0.118, 0.227, 0.541);
+const TEAL = rgb(0.051, 0.58, 0.533);
+const TEAL_LIGHT = rgb(0.941, 0.992, 0.98);
+const TEAL_200 = rgb(0.6, 0.93, 0.85);
+const TEXT = rgb(0.2, 0.25, 0.33);
+const MUTED = rgb(0.39, 0.45, 0.55);
+const RULE = rgb(0.8, 0.84, 0.89);
+const WHITE = rgb(1, 1, 1);
 
-/** Reemplaza caracteres que WinAnsi (StandardFonts de pdf-lib) no soporta. */
+const hex = { navy: "1E3A8A", teal: "0D9488", tealLight: "F0FDFA", text: "334155", muted: "64748B", rule: "CBD5E1", white: "FFFFFF" };
+
+function join(parts: (string | null | undefined)[], sep = " · "): string {
+  return parts.filter((p) => p != null && String(p).trim() !== "").map(String).join(sep);
+}
+const has = (s?: string | null) => s != null && String(s).trim() !== "";
+const capsPeriodo = (c: any) => join([c.institucion, c.horas ? `${c.horas} h` : null, c.anio ? String(c.anio) : null]);
+
+async function loadImageBytes(url?: string | null): Promise<{ bytes: Uint8Array; kind: "jpg" | "png" } | null> {
+  if (!url) return null;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const bytes = new Uint8Array(await r.arrayBuffer());
+    if (bytes[0] === 0xff && bytes[1] === 0xd8) return { bytes, kind: "jpg" };
+    if (bytes[0] === 0x89 && bytes[1] === 0x50) return { bytes, kind: "png" };
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================
+// PDF (pdf-lib)
+// ============================================================
 function sanitize(text: string): string {
   if (!text) return "";
   return text
-    .replace(/[—–‒―]/g, "-") // guiones tipográficos → -
-    .replace(/[‘’‚‛]/g, "'") // comillas simples
-    .replace(/[“”„‟]/g, '"') // comillas dobles
-    .replace(/…/g, "...") // elipsis
-    .replace(/[   ]/g, " ") // espacios no separables
-    .replace(/[•●▪]/g, "-") // viñetas
-    .replace(/[^\x00-\xFF]/g, ""); // cualquier otro fuera de Latin-1
+    .replace(/[—–‒―]/g, "-")
+    .replace(/[‘’‚‛]/g, "'")
+    .replace(/[“”„‟]/g, '"')
+    .replace(/…/g, "...")
+    .replace(/[   ]/g, " ")
+    .replace(/[•●▪]/g, "-")
+    .replace(/[^\x00-\xFF]/g, "");
 }
 
-/** Une partes no vacías con un separador. */
-function join(parts: (string | null | undefined)[], sep = " · "): string {
-  return parts.filter((p) => p != null && String(p).trim() !== "").join(sep);
+async function generarPDF(cv: CVAnalisis): Promise<Buffer> {
+  const doc = await PDFDocument.create();
+  const H = await doc.embedFont(StandardFonts.Helvetica);
+  const HB = await doc.embedFont(StandardFonts.HelveticaBold);
+  const HO = await doc.embedFont(StandardFonts.HelveticaOblique);
+
+  const W = 612, PH = 792, M = 48;
+  const CW = W - M * 2;
+  const BAND = 140;
+
+  let page = doc.addPage([W, PH]);
+  let y = PH;
+  let pageNum = 1;
+
+  const foto = await loadImageBytes(cv.foto_url);
+
+  function wrap(text: string, font: PDFFont, size: number, maxW: number): string[] {
+    const words = sanitize(text).split(/\s+/);
+    const lines: string[] = [];
+    let line = "";
+    for (const w of words) {
+      const test = line ? line + " " + w : w;
+      if (font.widthOfTextAtSize(test, size) > maxW && line) {
+        lines.push(line);
+        line = w;
+      } else line = test;
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  function footer() {
+    page.drawText(`Página ${pageNum}`, { x: W / 2 - 18, y: 26, size: 8, font: H, color: MUTED });
+  }
+  function newPage() {
+    footer();
+    page = doc.addPage([W, PH]);
+    pageNum++;
+    y = PH - M;
+  }
+  function ensure(h: number) {
+    if (y - h < M + 20) newPage();
+  }
+
+  function text(s: string, x: number, size: number, font: PDFFont, color = TEXT) {
+    page.drawText(sanitize(s), { x, y, size, font, color });
+  }
+  function paragraph(s: string, size = 9.5, x = M, maxW = CW, color = TEXT, lh = 1.35) {
+    for (const ln of wrap(s, H, size, maxW)) {
+      ensure(size * lh);
+      page.drawText(ln, { x, y: y - size, size, font: H, color });
+      y -= size * lh;
+    }
+  }
+  function bullet(s: string, size = 9.5) {
+    const x = M + 12;
+    const maxW = CW - 12;
+    const lines = wrap(s, H, size, maxW);
+    lines.forEach((ln, i) => {
+      ensure(size * 1.35);
+      if (i === 0) page.drawText("•", { x: M + 2, y: y - size, size, font: HB, color: TEAL });
+      page.drawText(ln, { x, y: y - size, size, font: H, color: TEXT });
+      y -= size * 1.35;
+    });
+  }
+  function section(title: string) {
+    ensure(30);
+    y -= 14;
+    page.drawText(title.toUpperCase(), { x: M, y: y - 11, size: 11, font: HB, color: NAVY });
+    y -= 15;
+    page.drawLine({ start: { x: M, y }, end: { x: W - M, y }, thickness: 0.8, color: RULE });
+    y -= 10;
+  }
+
+  // ---- Banda de encabezado ----
+  page.drawRectangle({ x: 0, y: PH - BAND, width: W, height: BAND, color: NAVY });
+  const nombre = has(cv.datos?.nombre) ? cv.datos!.nombre! : "Hoja de vida";
+  page.drawText(sanitize(nombre), { x: M, y: PH - 56, size: 24, font: HB, color: WHITE });
+  const subt = join([cv.nivel_profesional, cv.perfil_unesco?.area_principal ? `${cv.perfil_unesco.area_principal.codigo} · ${cv.perfil_unesco.area_principal.nombre}` : null]);
+  if (subt) page.drawText(sanitize(subt), { x: M, y: PH - 78, size: 11, font: HB, color: TEAL_200 });
+  const contacto = join([cv.datos?.email, cv.datos?.telefono, cv.datos?.ciudad, cv.datos?.linkedin]);
+  if (contacto) {
+    for (const ln of wrap(contacto, H, 9, CW - 110)) {
+      page.drawText(ln, { x: M, y: PH - 98 - 0, size: 9, font: H, color: rgb(0.85, 0.89, 0.97) });
+      break;
+    }
+    page.drawText(sanitize(contacto).slice(0, 120), { x: M, y: PH - 100, size: 9, font: H, color: rgb(0.85, 0.89, 0.97) });
+  }
+  // Foto
+  if (foto) {
+    try {
+      const img: PDFImage = foto.kind === "jpg" ? await doc.embedJpg(foto.bytes) : await doc.embedPng(foto.bytes);
+      const s = 86;
+      const fx = W - M - s, fy = PH - BAND + (BAND - s) / 2;
+      page.drawRectangle({ x: fx - 3, y: fy - 3, width: s + 6, height: s + 6, color: WHITE });
+      page.drawImage(img, { x: fx, y: fy, width: s, height: s });
+    } catch {}
+  }
+  y = PH - BAND - 22;
+
+  // ---- Bloque UNESCO ----
+  const ap = cv.perfil_unesco?.area_principal;
+  if (ap) {
+    const pad = 12;
+    const innerW = CW - pad * 2 - 6;
+    const just = has(ap.justificacion) ? wrap(ap.justificacion, H, 9.5, innerW) : [];
+    const sec = cv.perfil_unesco.areas_secundarias?.length
+      ? wrap("Áreas secundarias: " + cv.perfil_unesco.areas_secundarias.map((s) => `${s.codigo} · ${s.nombre}`).join(", "), H, 9, innerW)
+      : [];
+    const boxH = 18 + 16 + just.length * 13 + (sec.length ? sec.length * 12 + 4 : 0) + pad;
+    ensure(boxH + 4);
+    page.drawRectangle({ x: M, y: y - boxH, width: CW, height: boxH, color: TEAL_LIGHT });
+    page.drawRectangle({ x: M, y: y - boxH, width: 4, height: boxH, color: TEAL });
+    let ty = y - pad - 4;
+    page.drawText("PERFIL PROFESIONAL · ÁREAS UNESCO", { x: M + pad + 6, y: ty - 8, size: 8.5, font: HB, color: TEAL });
+    ty -= 20;
+    page.drawText(sanitize(`${ap.codigo} · ${ap.nombre}`), { x: M + pad + 6, y: ty - 10, size: 12, font: HB, color: NAVY });
+    ty -= 18;
+    for (const ln of just) { page.drawText(ln, { x: M + pad + 6, y: ty - 9, size: 9.5, font: H, color: TEXT }); ty -= 13; }
+    if (sec.length) { ty -= 4; for (const ln of sec) { page.drawText(ln, { x: M + pad + 6, y: ty - 9, size: 9, font: HO, color: MUTED }); ty -= 12; } }
+    y -= boxH;
+  }
+
+  // ---- Perfil profesional ----
+  if (has(cv.resumen)) { section("Perfil profesional"); paragraph(cv.resumen); }
+
+  // ---- Experiencia ----
+  if (cv.experiencia?.length) {
+    section("Experiencia profesional");
+    for (const e of cv.experiencia) {
+      ensure(28);
+      page.drawText(sanitize(e.cargo || ""), { x: M, y: y - 11, size: 11, font: HB, color: NAVY });
+      if (has(e.periodo)) {
+        const pw = H.widthOfTextAtSize(sanitize(e.periodo), 9);
+        page.drawText(sanitize(e.periodo), { x: W - M - pw, y: y - 10, size: 9, font: H, color: MUTED });
+      }
+      y -= 15;
+      if (has(e.empresa)) { page.drawText(sanitize(e.empresa), { x: M, y: y - 10, size: 10, font: HO, color: TEAL }); y -= 15; }
+      for (const l of e.logros || []) bullet(l);
+      y -= 6;
+    }
+  }
+
+  // ---- Educación ----
+  if (cv.educacion?.length) {
+    section("Educación");
+    for (const e of cv.educacion) {
+      ensure(20);
+      page.drawText(sanitize(e.titulo || ""), { x: M, y: y - 11, size: 10.5, font: HB, color: TEXT });
+      if (has(e.periodo)) {
+        const pw = H.widthOfTextAtSize(sanitize(e.periodo), 9);
+        page.drawText(sanitize(e.periodo), { x: W - M - pw, y: y - 10, size: 9, font: H, color: MUTED });
+      }
+      y -= 14;
+      if (has(e.institucion)) { page.drawText(sanitize(e.institucion), { x: M, y: y - 10, size: 9.5, font: H, color: MUTED }); y -= 15; }
+    }
+  }
+
+  // ---- Capacitaciones ----
+  if (cv.capacitaciones?.length) {
+    section("Capacitaciones");
+    for (const c of cv.capacitaciones) bullet(join([c.nombre, capsPeriodo(c)], " — "));
+  }
+
+  // ---- Certificaciones ----
+  if (cv.certificaciones_detectadas?.length) {
+    section("Certificaciones");
+    for (const c of cv.certificaciones_detectadas) bullet(join([c.nombre, join([c.emisor, c.fecha])], " — "));
+  }
+
+  // ---- Habilidades ----
+  if (cv.habilidades?.length) { section("Habilidades"); paragraph(cv.habilidades.join("  ·  ")); }
+
+  footer();
+  const bytes = await doc.save();
+  return Buffer.from(bytes);
 }
 
-function nonEmpty(s?: string | null): boolean {
-  return s != null && String(s).trim() !== "";
+// ============================================================
+// WORD (docx)
+// ============================================================
+function runsWhite(text: string, size: number, bold = false, color = hex.white) {
+  return new TextRun({ text, size, bold, color });
 }
-
-// ---------------------------------------------------------------------------
-// Generación Word (.docx)
-// ---------------------------------------------------------------------------
+function heading(text: string) {
+  return new Paragraph({
+    spacing: { before: 240, after: 100 },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: hex.rule, space: 2 } },
+    children: [new TextRun({ text: text.toUpperCase(), bold: true, size: 24, color: hex.navy })],
+  });
+}
+function bulletP(text: string) {
+  return new Paragraph({ bullet: { level: 0 }, spacing: { after: 40 }, children: [new TextRun({ text, size: 20, color: hex.text })] });
+}
 
 async function generarWord(cv: CVAnalisis): Promise<Buffer> {
-  const children: Paragraph[] = [];
+  const children: (Paragraph | Table)[] = [];
+  const nombre = has(cv.datos?.nombre) ? cv.datos!.nombre! : "Hoja de vida";
+  const subt = join([cv.nivel_profesional, cv.perfil_unesco?.area_principal ? `${cv.perfil_unesco.area_principal.codigo} · ${cv.perfil_unesco.area_principal.nombre}` : null]);
+  const contacto = join([cv.datos?.email, cv.datos?.telefono, cv.datos?.ciudad, cv.datos?.linkedin]);
 
-  const sectionHeading = (text: string): Paragraph =>
-    new Paragraph({
-      spacing: { before: 260, after: 120 },
-      border: {
-        bottom: { style: BorderStyle.SINGLE, size: 6, color: "2563EB", space: 2 },
-      },
-      children: [
-        new TextRun({
-          text: text.toUpperCase(),
-          bold: true,
-          size: 24, // 12pt
-          color: "1E3A8A",
-        }),
-      ],
-    });
+  const headTextCell = new TableCell({
+    verticalAlign: VerticalAlign.CENTER,
+    shading: { fill: hex.navy },
+    margins: { top: 160, bottom: 160, left: 220, right: 160 },
+    children: [
+      new Paragraph({ children: [runsWhite(nombre, 44, true)] }),
+      ...(subt ? [new Paragraph({ spacing: { before: 40 }, children: [runsWhite(subt, 20, true, "A7F3D0")] })] : []),
+      ...(contacto ? [new Paragraph({ spacing: { before: 40 }, children: [runsWhite(contacto, 17, false, "DBEAFE")] })] : []),
+    ],
+  });
 
-  // 1. Encabezado
-  const nombre = nonEmpty(cv.datos?.nombre) ? cv.datos.nombre! : "Hoja de vida";
-  children.push(
-    new Paragraph({
-      alignment: AlignmentType.LEFT,
-      spacing: { after: 40 },
-      children: [new TextRun({ text: nombre, bold: true, size: 44, color: "111827" })],
-    })
-  );
-
-  if (nonEmpty(cv.nivel_profesional)) {
-    children.push(
-      new Paragraph({
-        spacing: { after: 60 },
+  const foto = await loadImageBytes(cv.foto_url);
+  const cells = [headTextCell];
+  if (foto) {
+    cells.push(
+      new TableCell({
+        verticalAlign: VerticalAlign.CENTER,
+        shading: { fill: hex.navy },
+        width: { size: 22, type: WidthType.PERCENTAGE },
+        margins: { top: 120, bottom: 120, left: 60, right: 160 },
         children: [
-          new TextRun({ text: cv.nivel_profesional!, italics: true, size: 22, color: "374151" }),
-        ],
-      })
-    );
-  }
-
-  const contacto = join([
-    cv.datos?.email,
-    cv.datos?.telefono,
-    cv.datos?.ciudad,
-    cv.datos?.linkedin,
-  ]);
-  if (contacto) {
-    children.push(
-      new Paragraph({
-        spacing: { after: 120 },
-        children: [new TextRun({ text: contacto, size: 20, color: "4B5563" })],
-      })
-    );
-  }
-
-  // 2. Perfil profesional
-  if (nonEmpty(cv.resumen)) {
-    children.push(sectionHeading("Perfil profesional"));
-    children.push(
-      new Paragraph({
-        spacing: { after: 80 },
-        children: [new TextRun({ text: cv.resumen.trim(), size: 22 })],
-      })
-    );
-  }
-
-  // 3. Perfil según áreas UNESCO
-  const pu = cv.perfil_unesco;
-  if (pu?.area_principal && nonEmpty(pu.area_principal.nombre)) {
-    children.push(sectionHeading("Perfil según áreas UNESCO"));
-    children.push(
-      new Paragraph({
-        spacing: { after: 40 },
-        children: [
-          new TextRun({ text: "Área principal: ", bold: true, size: 22 }),
-          new TextRun({
-            text: join([pu.area_principal.codigo, pu.area_principal.nombre], " - "),
-            size: 22,
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [new ImageRun({ data: foto.bytes, type: foto.kind, transformation: { width: 92, height: 92 } } as any)],
           }),
         ],
       })
     );
-    if (nonEmpty(pu.area_principal.justificacion)) {
-      children.push(
-        new Paragraph({
-          spacing: { after: 60 },
-          children: [
-            new TextRun({ text: pu.area_principal.justificacion.trim(), italics: true, size: 20 }),
-          ],
-        })
-      );
-    }
-    const secundarias = (pu.areas_secundarias || [])
-      .filter((a) => a && nonEmpty(a.nombre))
-      .map((a) => join([a.codigo, a.nombre], " - "));
-    if (secundarias.length) {
-      children.push(
-        new Paragraph({
-          spacing: { after: 60 },
-          children: [
-            new TextRun({ text: "Áreas secundarias: ", bold: true, size: 22 }),
-            new TextRun({ text: secundarias.join("; "), size: 22 }),
-          ],
-        })
-      );
-    }
   }
-
-  // 4. Experiencia
-  const experiencia = (cv.experiencia || []).filter(
-    (e) => e && (nonEmpty(e.cargo) || nonEmpty(e.empresa))
+  const noBorder = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" } as const;
+  children.push(
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideHorizontal: noBorder, insideVertical: noBorder },
+      rows: [new TableRow({ children: cells })],
+    })
   );
-  if (experiencia.length) {
-    children.push(sectionHeading("Experiencia"));
-    for (const exp of experiencia) {
-      children.push(
-        new Paragraph({
-          spacing: { before: 80, after: 20 },
-          children: [
-            new TextRun({ text: nonEmpty(exp.cargo) ? exp.cargo : "", bold: true, size: 22 }),
-            ...(nonEmpty(exp.empresa)
-              ? [new TextRun({ text: ` — ${exp.empresa}`, size: 22, color: "374151" })]
-              : []),
-            ...(nonEmpty(exp.periodo)
-              ? [new TextRun({ text: `  (${exp.periodo})`, italics: true, size: 20, color: "6B7280" })]
-              : []),
-          ],
-        })
-      );
-      for (const logro of exp.logros || []) {
-        if (!nonEmpty(logro)) continue;
-        children.push(
-          new Paragraph({
-            bullet: { level: 0 },
-            spacing: { after: 20 },
-            children: [new TextRun({ text: logro.trim(), size: 20 })],
-          })
-        );
-      }
-    }
-  }
 
-  // 5. Educación
-  const educacion = (cv.educacion || []).filter(
-    (e) => e && (nonEmpty(e.titulo) || nonEmpty(e.institucion))
-  );
-  if (educacion.length) {
-    children.push(sectionHeading("Educación"));
-    for (const ed of educacion) {
-      children.push(
-        new Paragraph({
-          spacing: { before: 40, after: 20 },
-          children: [
-            new TextRun({ text: nonEmpty(ed.titulo) ? ed.titulo : "", bold: true, size: 22 }),
-            ...(nonEmpty(ed.institucion)
-              ? [new TextRun({ text: ` — ${ed.institucion}`, size: 22, color: "374151" })]
-              : []),
-            ...(nonEmpty(ed.periodo)
-              ? [new TextRun({ text: `  (${ed.periodo})`, italics: true, size: 20, color: "6B7280" })]
-              : []),
-          ],
-        })
-      );
-    }
-  }
-
-  // 6. Capacitaciones
-  const capacitaciones = (cv.capacitaciones || []).filter((c) => c && nonEmpty(c.nombre));
-  if (capacitaciones.length) {
-    children.push(sectionHeading("Capacitaciones"));
-    for (const cap of capacitaciones) {
-      const detalles = join(
-        [
-          nonEmpty(cap.institucion) ? cap.institucion : null,
-          cap.horas != null ? `${cap.horas} h` : null,
-          cap.anio != null ? String(cap.anio) : null,
-        ],
-        " · "
-      );
-      const esCert = nonEmpty(cap.fuente) && /certificad/i.test(cap.fuente!);
-      children.push(
-        new Paragraph({
-          bullet: { level: 0 },
-          spacing: { after: 20 },
-          children: [
-            new TextRun({ text: cap.nombre.trim(), bold: true, size: 20 }),
-            ...(detalles ? [new TextRun({ text: ` — ${detalles}`, size: 20, color: "374151" })] : []),
-            ...(esCert
-              ? [new TextRun({ text: "  [certificado]", italics: true, size: 18, color: "2563EB" })]
-              : []),
-          ],
-        })
-      );
-    }
-  }
-
-  // 7. Certificaciones
-  const certificaciones = (cv.certificaciones_detectadas || []).filter((c) => c && nonEmpty(c.nombre));
-  if (certificaciones.length) {
-    children.push(sectionHeading("Certificaciones"));
-    for (const cert of certificaciones) {
-      const detalles = join(
-        [
-          nonEmpty(cert.emisor) ? cert.emisor : null,
-          nonEmpty(cert.fecha) ? cert.fecha : null,
-        ],
-        " · "
-      );
-      children.push(
-        new Paragraph({
-          bullet: { level: 0 },
-          spacing: { after: 20 },
-          children: [
-            new TextRun({ text: cert.nombre.trim(), bold: true, size: 20 }),
-            ...(detalles ? [new TextRun({ text: ` — ${detalles}`, size: 20, color: "374151" })] : []),
-          ],
-        })
-      );
-    }
-  }
-
-  // 8. Habilidades
-  const habilidades = (cv.habilidades || []).filter((h) => nonEmpty(h)).map((h) => h.trim());
-  if (habilidades.length) {
-    children.push(sectionHeading("Habilidades"));
+  // Bloque UNESCO
+  const ap = cv.perfil_unesco?.area_principal;
+  if (ap) {
     children.push(
       new Paragraph({
-        spacing: { after: 80 },
-        children: [new TextRun({ text: habilidades.join(", "), size: 22 })],
+        spacing: { before: 200, after: 40 },
+        shading: { fill: hex.tealLight },
+        border: { left: { style: BorderStyle.SINGLE, size: 18, color: hex.teal, space: 8 } },
+        children: [new TextRun({ text: "PERFIL PROFESIONAL · ÁREAS UNESCO", bold: true, size: 16, color: hex.teal })],
+      }),
+      new Paragraph({
+        shading: { fill: hex.tealLight },
+        border: { left: { style: BorderStyle.SINGLE, size: 18, color: hex.teal, space: 8 } },
+        children: [new TextRun({ text: `${ap.codigo} · ${ap.nombre}`, bold: true, size: 24, color: hex.navy })],
+      }),
+      new Paragraph({
+        spacing: { after: 60 },
+        shading: { fill: hex.tealLight },
+        border: { left: { style: BorderStyle.SINGLE, size: 18, color: hex.teal, space: 8 } },
+        children: [new TextRun({ text: ap.justificacion || "", size: 19, color: hex.text })],
       })
     );
+    if (cv.perfil_unesco.areas_secundarias?.length) {
+      children.push(new Paragraph({ spacing: { after: 40 }, children: [new TextRun({ text: "Áreas secundarias: " + cv.perfil_unesco.areas_secundarias.map((s) => `${s.codigo} · ${s.nombre}`).join(", "), italics: true, size: 18, color: hex.muted })] }));
+    }
   }
 
-  // 9. Recomendaciones (opcional)
-  const recomendaciones = (cv.recomendaciones || []).filter((r) => nonEmpty(r));
-  if (recomendaciones.length) {
-    children.push(sectionHeading("Recomendaciones"));
-    for (const rec of recomendaciones) {
+  if (has(cv.resumen)) {
+    children.push(heading("Perfil profesional"), new Paragraph({ children: [new TextRun({ text: cv.resumen, size: 20, color: hex.text })] }));
+  }
+
+  if (cv.experiencia?.length) {
+    children.push(heading("Experiencia profesional"));
+    for (const e of cv.experiencia) {
       children.push(
         new Paragraph({
-          bullet: { level: 0 },
-          spacing: { after: 20 },
-          children: [new TextRun({ text: rec.trim(), size: 20 })],
+          spacing: { before: 80 },
+          tabStops: [{ type: "right" as any, position: 9600 }],
+          children: [
+            new TextRun({ text: e.cargo || "", bold: true, size: 21, color: hex.navy }),
+            ...(has(e.periodo) ? [new TextRun({ text: `\t${e.periodo}`, size: 18, color: hex.muted })] : []),
+          ],
         })
       );
+      if (has(e.empresa)) children.push(new Paragraph({ children: [new TextRun({ text: e.empresa, italics: true, size: 19, color: hex.teal })] }));
+      for (const l of e.logros || []) children.push(bulletP(l));
     }
+  }
+
+  if (cv.educacion?.length) {
+    children.push(heading("Educación"));
+    for (const e of cv.educacion) {
+      children.push(
+        new Paragraph({
+          spacing: { before: 60 },
+          tabStops: [{ type: "right" as any, position: 9600 }],
+          children: [
+            new TextRun({ text: e.titulo || "", bold: true, size: 20, color: hex.text }),
+            ...(has(e.periodo) ? [new TextRun({ text: `\t${e.periodo}`, size: 18, color: hex.muted })] : []),
+          ],
+        }),
+        ...(has(e.institucion) ? [new Paragraph({ children: [new TextRun({ text: e.institucion, size: 19, color: hex.muted })] })] : [])
+      );
+    }
+  }
+
+  if (cv.capacitaciones?.length) {
+    children.push(heading("Capacitaciones"));
+    for (const c of cv.capacitaciones) children.push(bulletP(join([c.nombre, capsPeriodo(c)], " — ")));
+  }
+
+  if (cv.certificaciones_detectadas?.length) {
+    children.push(heading("Certificaciones"));
+    for (const c of cv.certificaciones_detectadas) children.push(bulletP(join([c.nombre, join([c.emisor, c.fecha])], " — ")));
+  }
+
+  if (cv.habilidades?.length) {
+    children.push(heading("Habilidades"), new Paragraph({ children: [new TextRun({ text: cv.habilidades.join("  ·  "), size: 20, color: hex.text })] }));
   }
 
   const doc = new Document({
-    sections: [
-      {
-        properties: {
-          page: {
-            margin: { top: 1000, bottom: 1000, left: 1100, right: 1100 },
-          },
-        },
-        children,
-      },
-    ],
-    styles: {
-      default: {
-        document: {
-          run: { font: "Calibri", size: 22 },
-        },
-      },
-    },
+    sections: [{ properties: { page: { margin: { top: 720, bottom: 720, left: 720, right: 720 } } }, children }],
   });
-
-  return Packer.toBuffer(doc);
+  return await Packer.toBuffer(doc);
 }
 
-// ---------------------------------------------------------------------------
-// Generación PDF (pdf-lib) con flujo de texto
-// ---------------------------------------------------------------------------
-
-async function generarPdf(cv: CVAnalisis): Promise<Uint8Array> {
-  const doc = await PDFDocument.create();
-  const font = await doc.embedFont(StandardFonts.Helvetica);
-  const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
-  const fontItalic = await doc.embedFont(StandardFonts.HelveticaOblique);
-
-  // Tamaño carta
-  const PAGE_W = 612;
-  const PAGE_H = 792;
-  const MARGIN = 50;
-  const CONTENT_W = PAGE_W - MARGIN * 2;
-  const BOTTOM = MARGIN;
-
-  const colorTitle = rgb(0.117, 0.227, 0.541); // #1E3A8A
-  const colorAccent = rgb(0.145, 0.388, 0.922); // #2563EB
-  const colorText = rgb(0.13, 0.13, 0.13);
-  const colorMuted = rgb(0.3, 0.32, 0.36);
-
-  let page: PDFPage = doc.addPage([PAGE_W, PAGE_H]);
-  let y = PAGE_H - MARGIN;
-
-  const ensureSpace = (needed: number) => {
-    if (y - needed < BOTTOM) {
-      page = doc.addPage([PAGE_W, PAGE_H]);
-      y = PAGE_H - MARGIN;
-    }
-  };
-
-  // Envuelve texto por ancho midiendo con la fuente.
-  const wrapText = (
-    text: string,
-    f: PDFFont,
-    size: number,
-    maxWidth: number
-  ): string[] => {
-    const words = sanitize(text).split(/\s+/).filter((w) => w.length > 0);
-    const lines: string[] = [];
-    let current = "";
-    for (const word of words) {
-      const test = current ? current + " " + word : word;
-      if (f.widthOfTextAtSize(test, size) > maxWidth && current) {
-        lines.push(current);
-        current = word;
-        // Palabra individual más ancha que la línea: partir por caracteres.
-        while (f.widthOfTextAtSize(current, size) > maxWidth && current.length > 1) {
-          let cut = current.length - 1;
-          while (cut > 1 && f.widthOfTextAtSize(current.slice(0, cut), size) > maxWidth) {
-            cut--;
-          }
-          lines.push(current.slice(0, cut));
-          current = current.slice(cut);
-        }
-      } else {
-        current = test;
-      }
-    }
-    if (current) lines.push(current);
-    return lines.length ? lines : [""];
-  };
-
-  const drawParagraph = (
-    text: string,
-    opts: {
-      size?: number;
-      font?: PDFFont;
-      color?: ReturnType<typeof rgb>;
-      indent?: number;
-      lineGap?: number;
-      spaceAfter?: number;
-      bullet?: boolean;
-    } = {}
-  ) => {
-    const size = opts.size ?? 10;
-    const f = opts.font ?? font;
-    const color = opts.color ?? colorText;
-    const indent = opts.indent ?? 0;
-    const lineGap = opts.lineGap ?? 3;
-    const lineHeight = size + lineGap;
-    const bulletIndent = opts.bullet ? 12 : 0;
-    const x = MARGIN + indent + bulletIndent;
-    const maxWidth = CONTENT_W - indent - bulletIndent;
-
-    const lines = wrapText(text, f, size, maxWidth);
-    for (let i = 0; i < lines.length; i++) {
-      ensureSpace(lineHeight);
-      if (opts.bullet && i === 0) {
-        page.drawText("-", {
-          x: MARGIN + indent,
-          y,
-          size,
-          font: fontBold,
-          color,
-        });
-      }
-      page.drawText(lines[i], { x, y, size, font: f, color });
-      y -= lineHeight;
-    }
-    if (opts.spaceAfter) y -= opts.spaceAfter;
-  };
-
-  // Título de sección con línea separadora.
-  const drawSection = (title: string) => {
-    ensureSpace(30);
-    y -= 8;
-    ensureSpace(24);
-    page.drawText(sanitize(title.toUpperCase()), {
-      x: MARGIN,
-      y,
-      size: 12,
-      font: fontBold,
-      color: colorTitle,
-    });
-    y -= 6;
-    page.drawLine({
-      start: { x: MARGIN, y },
-      end: { x: PAGE_W - MARGIN, y },
-      thickness: 1,
-      color: colorAccent,
-    });
-    y -= 12;
-  };
-
-  // --- Encabezado ---
-  const nombre = nonEmpty(cv.datos?.nombre) ? cv.datos.nombre! : "Hoja de vida";
-  ensureSpace(28);
-  page.drawText(sanitize(nombre), {
-    x: MARGIN,
-    y,
-    size: 22,
-    font: fontBold,
-    color: rgb(0.067, 0.094, 0.153),
-  });
-  y -= 26;
-
-  if (nonEmpty(cv.nivel_profesional)) {
-    drawParagraph(cv.nivel_profesional!, {
-      size: 11,
-      font: fontItalic,
-      color: colorMuted,
-      spaceAfter: 2,
-    });
-  }
-
-  const contacto = join([
-    cv.datos?.email,
-    cv.datos?.telefono,
-    cv.datos?.ciudad,
-    cv.datos?.linkedin,
-  ]);
-  if (contacto) {
-    drawParagraph(contacto, { size: 9.5, color: colorMuted, spaceAfter: 4 });
-  }
-
-  // --- Perfil profesional ---
-  if (nonEmpty(cv.resumen)) {
-    drawSection("Perfil profesional");
-    drawParagraph(cv.resumen.trim(), { size: 10, spaceAfter: 4 });
-  }
-
-  // --- Perfil UNESCO ---
-  const pu = cv.perfil_unesco;
-  if (pu?.area_principal && nonEmpty(pu.area_principal.nombre)) {
-    drawSection("Perfil según áreas UNESCO");
-    drawParagraph(
-      "Área principal: " + join([pu.area_principal.codigo, pu.area_principal.nombre], " - "),
-      { size: 10, font: fontBold, spaceAfter: 2 }
-    );
-    if (nonEmpty(pu.area_principal.justificacion)) {
-      drawParagraph(pu.area_principal.justificacion.trim(), {
-        size: 9.5,
-        font: fontItalic,
-        color: colorMuted,
-        spaceAfter: 3,
-      });
-    }
-    const secundarias = (pu.areas_secundarias || [])
-      .filter((a) => a && nonEmpty(a.nombre))
-      .map((a) => join([a.codigo, a.nombre], " - "));
-    if (secundarias.length) {
-      drawParagraph("Áreas secundarias: " + secundarias.join("; "), {
-        size: 10,
-        spaceAfter: 4,
-      });
-    }
-  }
-
-  // --- Experiencia ---
-  const experiencia = (cv.experiencia || []).filter(
-    (e) => e && (nonEmpty(e.cargo) || nonEmpty(e.empresa))
-  );
-  if (experiencia.length) {
-    drawSection("Experiencia");
-    for (const exp of experiencia) {
-      const encabezado = join(
-        [
-          nonEmpty(exp.cargo) ? exp.cargo : null,
-          nonEmpty(exp.empresa) ? exp.empresa : null,
-        ],
-        " - "
-      );
-      const periodo = nonEmpty(exp.periodo) ? `  (${exp.periodo})` : "";
-      drawParagraph(encabezado + periodo, { size: 10.5, font: fontBold, spaceAfter: 1 });
-      for (const logro of exp.logros || []) {
-        if (!nonEmpty(logro)) continue;
-        drawParagraph(logro.trim(), { size: 9.5, bullet: true, spaceAfter: 1 });
-      }
-      y -= 4;
-    }
-  }
-
-  // --- Educación ---
-  const educacion = (cv.educacion || []).filter(
-    (e) => e && (nonEmpty(e.titulo) || nonEmpty(e.institucion))
-  );
-  if (educacion.length) {
-    drawSection("Educación");
-    for (const ed of educacion) {
-      const texto = join(
-        [nonEmpty(ed.titulo) ? ed.titulo : null, nonEmpty(ed.institucion) ? ed.institucion : null],
-        " - "
-      );
-      const periodo = nonEmpty(ed.periodo) ? `  (${ed.periodo})` : "";
-      drawParagraph(texto + periodo, { size: 10, font: fontBold, spaceAfter: 3 });
-    }
-  }
-
-  // --- Capacitaciones ---
-  const capacitaciones = (cv.capacitaciones || []).filter((c) => c && nonEmpty(c.nombre));
-  if (capacitaciones.length) {
-    drawSection("Capacitaciones");
-    for (const cap of capacitaciones) {
-      const detalles = join(
-        [
-          nonEmpty(cap.institucion) ? cap.institucion : null,
-          cap.horas != null ? `${cap.horas} h` : null,
-          cap.anio != null ? String(cap.anio) : null,
-        ],
-        " · "
-      );
-      const esCert = nonEmpty(cap.fuente) && /certificad/i.test(cap.fuente!);
-      let texto = cap.nombre.trim();
-      if (detalles) texto += " - " + detalles;
-      if (esCert) texto += " [certificado]";
-      drawParagraph(texto, { size: 9.5, bullet: true, spaceAfter: 1 });
-    }
-    y -= 3;
-  }
-
-  // --- Certificaciones ---
-  const certificaciones = (cv.certificaciones_detectadas || []).filter((c) => c && nonEmpty(c.nombre));
-  if (certificaciones.length) {
-    drawSection("Certificaciones");
-    for (const cert of certificaciones) {
-      const detalles = join(
-        [nonEmpty(cert.emisor) ? cert.emisor : null, nonEmpty(cert.fecha) ? cert.fecha : null],
-        " · "
-      );
-      let texto = cert.nombre.trim();
-      if (detalles) texto += " - " + detalles;
-      drawParagraph(texto, { size: 9.5, bullet: true, spaceAfter: 1 });
-    }
-    y -= 3;
-  }
-
-  // --- Habilidades ---
-  const habilidades = (cv.habilidades || []).filter((h) => nonEmpty(h)).map((h) => h.trim());
-  if (habilidades.length) {
-    drawSection("Habilidades");
-    drawParagraph(habilidades.join(", "), { size: 10, spaceAfter: 4 });
-  }
-
-  // --- Recomendaciones ---
-  const recomendaciones = (cv.recomendaciones || []).filter((r) => nonEmpty(r));
-  if (recomendaciones.length) {
-    drawSection("Recomendaciones");
-    for (const rec of recomendaciones) {
-      drawParagraph(rec.trim(), { size: 9.5, bullet: true, spaceAfter: 1 });
-    }
-  }
-
-  return doc.save();
-}
-
-// ---------------------------------------------------------------------------
-// Route handler
-// ---------------------------------------------------------------------------
-
-export async function POST(req: NextRequest) {
-  // Auth
+// ============================================================
+// Handler
+// ============================================================
+export async function POST(req: Request) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return new Response(JSON.stringify({ error: "No autorizado" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
-  // Body
-  let body: { formato?: unknown; cv?: unknown };
+  let body: { formato?: string; cv?: CVAnalisis };
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ error: "JSON inválido" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+    return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
-
-  const formato = body?.formato;
-  const cv = body?.cv as CVAnalisis | undefined;
-
-  if (formato !== "word" && formato !== "pdf") {
-    return new Response(
-      JSON.stringify({ error: "El campo 'formato' debe ser 'word' o 'pdf'" }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
-  }
-  if (!cv || typeof cv !== "object" || typeof (cv as CVAnalisis).datos !== "object") {
-    return new Response(JSON.stringify({ error: "Falta el objeto 'cv' o es inválido" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+  const { formato, cv } = body;
+  if (!cv || (formato !== "word" && formato !== "pdf")) {
+    return NextResponse.json({ error: "Parámetros inválidos" }, { status: 400 });
   }
 
   try {
     if (formato === "word") {
-      const buffer = await generarWord(cv);
-      return new Response(new Uint8Array(buffer), {
-        status: 200,
+      const buf = await generarWord(cv);
+      return new Response(new Uint8Array(buf), {
         headers: {
-          "Content-Type":
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
           "Content-Disposition": 'attachment; filename="hoja-de-vida.docx"',
-          "Cache-Control": "no-store",
-        },
-      });
-    } else {
-      const bytes = await generarPdf(cv);
-      return new Response(Buffer.from(bytes), {
-        status: 200,
-        headers: {
-          "Content-Type": "application/pdf",
-          "Content-Disposition": 'attachment; filename="hoja-de-vida.pdf"',
-          "Cache-Control": "no-store",
         },
       });
     }
-  } catch (err) {
-    console.error("Error generando la hoja de vida:", err);
-    return new Response(
-      JSON.stringify({ error: "No se pudo generar el archivo" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+    const buf = await generarPDF(cv);
+    return new Response(new Uint8Array(buf), {
+      headers: { "Content-Type": "application/pdf", "Content-Disposition": 'attachment; filename="hoja-de-vida.pdf"' },
+    });
+  } catch (e: any) {
+    return NextResponse.json({ error: `No se pudo generar el archivo: ${e?.message || e}` }, { status: 500 });
   }
 }
