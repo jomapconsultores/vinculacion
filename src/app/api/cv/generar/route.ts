@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { askJSON } from "@/lib/anthropic";
+import { askJSON } from "@/lib/ai";
 
 export const maxDuration = 60;
 
@@ -49,7 +49,7 @@ export async function POST() {
     );
   } catch (e: any) {
     return NextResponse.json(
-      { error: e?.message?.includes("ANTHROPIC") ? "IA no configurada (falta ANTHROPIC_API_KEY)." : "No se pudo generar el CV." },
+      { error: e?.message?.includes("IA no configurada") ? "IA no configurada (define DEEPSEEK_API_KEY, MISTRAL_API_KEY o CODESTRAL_API_KEY)." : "No se pudo generar el CV." },
       { status: 502 }
     );
   }

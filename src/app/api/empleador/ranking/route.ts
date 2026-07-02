@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/server";
-import { askJSON } from "@/lib/anthropic";
+import { askJSON } from "@/lib/ai";
 
 type IAResultado = {
   score: number;
