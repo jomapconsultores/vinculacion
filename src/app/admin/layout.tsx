@@ -1,13 +1,15 @@
 import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { Sidebar, type NavItem } from "@/components/Sidebar";
-import { LayoutDashboard, HeartHandshake, GraduationCap, BarChart3 } from "lucide-react";
+import { LayoutDashboard, HeartHandshake, GraduationCap, BarChart3, TrendingUp, ClipboardList } from "lucide-react";
 
 const items: NavItem[] = [
   { href: "/admin", label: "Panel", icon: <LayoutDashboard className="h-4 w-4" /> },
+  { href: "/admin/empleabilidad", label: "Empleabilidad", icon: <TrendingUp className="h-4 w-4" /> },
   { href: "/admin/servicios", label: "Servicios", icon: <HeartHandshake className="h-4 w-4" /> },
   { href: "/admin/practicas", label: "Prácticas", icon: <GraduationCap className="h-4 w-4" /> },
   { href: "/admin/indicadores", label: "Indicadores", icon: <BarChart3 className="h-4 w-4" /> },
+  { href: "/admin/encuestas", label: "Encuestas", icon: <ClipboardList className="h-4 w-4" /> },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

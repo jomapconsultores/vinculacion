@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { Briefcase, MapPin, DollarSign, ArrowRight, BadgeCheck } from "lucide-react";
+import { empleosRecomendados } from "@/lib/recomendar";
+import { Briefcase, MapPin, DollarSign, ArrowRight, BadgeCheck, Sparkles } from "lucide-react";
 
 export default async function EmpleosPage() {
   const profile = await requireProfile();
@@ -17,12 +18,35 @@ export default async function EmpleosPage() {
     .from("postulaciones").select("empleo_id, estado, match_score").eq("profile_id", profile.id);
   const postByEmpleo = new Map((misPost ?? []).map((p: any) => [p.empleo_id, p]));
 
+  const recomendados = await empleosRecomendados(supabase, profile.id, 3);
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Bolsa de empleo</h1>
         <p className="mt-1 text-slate-500">Ofertas de empresas validadas por la universidad.</p>
       </div>
+
+      {recomendados.length > 0 && (
+        <section className="card border-teal-200 bg-teal-50/40 p-5">
+          <h2 className="flex items-center gap-2 font-semibold text-teal-800">
+            <Sparkles className="h-5 w-5" /> Recomendados para ti
+          </h2>
+          <p className="mt-0.5 text-sm text-teal-700">Según tus competencias y avales.</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            {recomendados.map((r) => (
+              <Link key={r.id} href={`/dashboard/empleos/${r.id}`} className="rounded-lg border border-teal-200 bg-white p-4 transition hover:shadow-sm">
+                <div className="flex items-center justify-between">
+                  <span className="badge bg-teal-600 text-white">{r.score}% afinidad</span>
+                  {r.requeridas > 0 && <span className="text-xs text-slate-400">{r.cubiertas}/{r.requeridas} comp.</span>}
+                </div>
+                <p className="mt-2 font-medium text-slate-800">{r.titulo}</p>
+                <p className="text-sm text-slate-500">{r.empresa}{r.ciudad ? ` · ${r.ciudad}` : ""}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="space-y-4">
         {(empleos ?? []).length === 0 && (

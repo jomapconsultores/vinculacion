@@ -1,6 +1,6 @@
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { Award, BadgeCheck, Clock, CircleDashed } from "lucide-react";
+import { Award, BadgeCheck, Clock, CircleDashed, Download } from "lucide-react";
 import Link from "next/link";
 
 export default async function CompetenciasPage() {
@@ -9,7 +9,7 @@ export default async function CompetenciasPage() {
 
   const { data: comps } = await supabase
     .from("competencias_graduado")
-    .select("estado, avalada_por, fecha_aval, competencias(nombre, area)")
+    .select("estado, avalada_por, fecha_aval, codigo_verificacion, competencias(nombre, area)")
     .eq("profile_id", profile.id);
 
   const avaladas = (comps ?? []).filter((c: any) => c.estado === "avalada");
@@ -37,10 +37,19 @@ export default async function CompetenciasPage() {
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {avaladas.map((c: any, i: number) => (
               <div key={i} className="flex items-start gap-3 rounded-lg border border-teal-200 bg-teal-50 p-4">
-                <Award className="mt-0.5 h-5 w-5 text-teal-600" />
-                <div>
+                <Award className="mt-0.5 h-5 w-5 shrink-0 text-teal-600" />
+                <div className="min-w-0 flex-1">
                   <p className="font-medium text-teal-900">{c.competencias?.nombre}</p>
                   <p className="text-xs text-teal-700">{c.avalada_por}</p>
+                  {c.codigo_verificacion && (
+                    <a
+                      href={`/api/certificado/${c.codigo_verificacion}`}
+                      target="_blank"
+                      className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline"
+                    >
+                      <Download className="h-3.5 w-3.5" /> Descargar certificado
+                    </a>
+                  )}
                 </div>
               </div>
             ))}

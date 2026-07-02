@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { RankingButton } from "./RankingButton";
+import { candidatosSugeridos } from "@/lib/recomendar";
 import {
   ArrowLeft,
   MapPin,
@@ -12,6 +13,7 @@ import {
   CheckCircle2,
   AlertCircle,
   ThumbsUp,
+  UserPlus,
 } from "lucide-react";
 
 const estadoPostBadge: Record<string, string> = {
@@ -54,6 +56,8 @@ export default async function EmpleoDetallePage({ params }: { params: { id: stri
   const requeridas: string[] = (e.empleo_competencias ?? [])
     .map((ec: any) => ec.competencias?.nombre)
     .filter(Boolean);
+
+  const sugeridos = await candidatosSugeridos(supabase, empleoId, 5);
 
   return (
     <div className="space-y-6">
@@ -213,6 +217,32 @@ export default async function EmpleoDetallePage({ params }: { params: { id: stri
             );
           })}
         </div>
+      )}
+
+      {/* Candidatos sugeridos por IA (no han postulado) */}
+      {sugeridos.length > 0 && (
+        <section className="card border-teal-200 bg-teal-50/40 p-5">
+          <h2 className="flex items-center gap-2 font-semibold text-teal-800">
+            <UserPlus className="h-5 w-5" /> Candidatos sugeridos
+          </h2>
+          <p className="mt-0.5 text-sm text-teal-700">
+            Graduados con competencias avaladas que encajan con esta oferta y aún no han postulado.
+          </p>
+          <div className="mt-3 space-y-2">
+            {sugeridos.map((c) => (
+              <div key={c.id} className="flex items-center justify-between rounded-lg border border-teal-200 bg-white p-3">
+                <div>
+                  <p className="font-medium text-slate-800">{c.nombre}</p>
+                  <p className="text-xs text-slate-500">{c.carrera ?? ""}</p>
+                </div>
+                <div className="text-right">
+                  <span className="badge bg-teal-600 text-white">{c.score}% afinidad</span>
+                  <p className="mt-0.5 text-xs text-slate-400">{c.cubiertas}/{c.requeridas} competencias</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );

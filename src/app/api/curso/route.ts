@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 
 // Inscribir o aprobar un curso. Al aprobar, la universidad AVALA la competencia.
@@ -42,6 +43,14 @@ export async function POST(req: Request) {
       },
       { onConflict: "profile_id,competencia_id" }
     );
+    // Asignar código de verificación del certificado (solo si aún no tiene)
+    const codigo = randomBytes(6).toString("hex").toUpperCase();
+    await supabase
+      .from("competencias_graduado")
+      .update({ codigo_verificacion: codigo })
+      .eq("profile_id", user.id)
+      .eq("competencia_id", curso.competencia_id)
+      .is("codigo_verificacion", null);
   }
 
   return NextResponse.json({ estado: "aprobado", competencia_avalada: !!curso.competencia_id });

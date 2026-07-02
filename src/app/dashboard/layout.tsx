@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { Sidebar, type NavItem } from "@/components/Sidebar";
-import { LayoutDashboard, User, FileText, Briefcase, GraduationCap, Award, ScanText } from "lucide-react";
+import { LayoutDashboard, User, FileText, Briefcase, GraduationCap, Award, ScanText, ClipboardList } from "lucide-react";
 
 const items: NavItem[] = [
   { href: "/dashboard", label: "Inicio", icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -11,6 +11,7 @@ const items: NavItem[] = [
   { href: "/dashboard/empleos", label: "Empleos", icon: <Briefcase className="h-4 w-4" /> },
   { href: "/dashboard/competencias", label: "Competencias", icon: <Award className="h-4 w-4" /> },
   { href: "/dashboard/cursos", label: "Educación continua", icon: <GraduationCap className="h-4 w-4" /> },
+  { href: "/dashboard/encuesta", label: "Encuesta de pertinencia", icon: <ClipboardList className="h-4 w-4" /> },
 ];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
