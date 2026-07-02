@@ -2,12 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { HeartHandshake, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,10 +17,13 @@ export default function LoginPage() {
     setLoading(true);
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) return setError(error.message);
-    router.push("/dashboard");
-    router.refresh();
+    if (error) {
+      setLoading(false);
+      return setError(error.message);
+    }
+    // Navegación completa: garantiza que la cookie de sesión llegue al servidor
+    // y el middleware reconozca la sesión (evita el rebote a /login).
+    window.location.assign("/dashboard");
   }
 
   return (
