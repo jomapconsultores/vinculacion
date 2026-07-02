@@ -2,11 +2,14 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import type { CVAnalisis } from "@/lib/cv-types";
 import {
   Upload, FileText, Award, GraduationCap, Sparkles, Loader2, FileDown,
-  Briefcase, BadgeCheck, Lightbulb, Image as ImageIcon, Compass, X,
+  Briefcase, BadgeCheck, Lightbulb, Image as ImageIcon, Compass, X, UserCheck, ArrowRight,
 } from "lucide-react";
+
+type PerfilInfo = { experiencia: number; educacion: number; habilidades: number };
 
 export default function AnalizarPage() {
   const [cv, setCv] = useState<File | null>(null);
@@ -16,6 +19,7 @@ export default function AnalizarPage() {
   const [descargando, setDescargando] = useState<null | "word" | "pdf">(null);
   const [error, setError] = useState<string | null>(null);
   const [analisis, setAnalisis] = useState<CVAnalisis | null>(null);
+  const [perfilInfo, setPerfilInfo] = useState<PerfilInfo | null>(null);
   const cvRef = useRef<HTMLInputElement>(null);
 
   async function analizar(e: React.FormEvent) {
@@ -33,6 +37,7 @@ export default function AnalizarPage() {
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "Error al analizar");
       setAnalisis(j.analisis);
+      setPerfilInfo(j.perfil_actualizado ?? null);
     } catch (e: any) {
       setError(e.message);
     }
@@ -151,6 +156,26 @@ export default function AnalizarPage() {
           </p>
         )}
       </form>
+
+      {analisis && perfilInfo && (perfilInfo.experiencia + perfilInfo.educacion + perfilInfo.habilidades > 0) && (
+        <div className="card flex flex-col items-start gap-3 border-teal-300 bg-teal-50 p-5 sm:flex-row sm:items-center">
+          <UserCheck className="h-6 w-6 shrink-0 text-teal-600" />
+          <div className="flex-1">
+            <p className="font-medium text-teal-900">Tu perfil se actualizó automáticamente con el documento</p>
+            <p className="text-sm text-teal-700">
+              Se agregaron{" "}
+              {[
+                perfilInfo.experiencia ? `${perfilInfo.experiencia} experiencia(s)` : null,
+                perfilInfo.educacion ? `${perfilInfo.educacion} formación(es)` : null,
+                perfilInfo.habilidades ? `${perfilInfo.habilidades} habilidad(es)` : null,
+              ].filter(Boolean).join(", ")}. Tu identidad verificada no se modifica.
+            </p>
+          </div>
+          <Link href="/dashboard/perfil" className="btn-accent shrink-0">
+            Ver mi perfil <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      )}
 
       {analisis && <Resultado analisis={analisis} onDescargar={descargar} descargando={descargando} />}
     </div>

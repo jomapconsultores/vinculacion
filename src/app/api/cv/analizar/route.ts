@@ -9,6 +9,18 @@ export const maxDuration = 120;
 
 const MAX_CERTS = 6;
 
+// Extrae fechas aproximadas de un período tipo "Ene 2022 - Dic 2024" o "2020 - Actualidad".
+function parsePeriodo(periodo?: string): { inicio: string | null; fin: string | null; actual: boolean } {
+  const s = (periodo || "").toLowerCase();
+  const years = (s.match(/(19|20)\d{2}/g) || []).map(Number);
+  const actual = /actual|presente|actualidad|current|hoy|vigente/.test(s);
+  const inicio = years[0] ? `${years[0]}-01-01` : null;
+  const fin = actual ? null : years[1] ? `${years[1]}-12-01` : null;
+  return { inicio, fin, actual };
+}
+
+const norm = (v?: string | null) => (v || "").trim().toLowerCase();
+
 export async function POST(req: Request) {
   const supabase = await createClient();
   const {
@@ -108,19 +120,80 @@ Reglas:
   }
   analisis.foto_url = foto_url;
 
-  // 5) Guardar
+  // 5) Guardar CV + RELLENAR EL PERFIL desde el documento (aditivo, sin duplicar)
+  const perfil_actualizado = { experiencia: 0, educacion: 0, habilidades: 0 };
   try {
     await supabase.from("cvs").upsert(
       { profile_id: user.id, contenido: analisis, generado_ia: true, updated_at: new Date().toISOString() },
       { onConflict: "profile_id" }
     );
+
+    // Perfil: resumen + foto siempre; contacto solo si está vacío (no pisar lo existente)
+    const { data: prof } = await supabase
+      .from("profiles").select("telefono, ciudad, linkedin").eq("id", user.id).maybeSingle();
     const upd: Record<string, any> = {};
     if (foto_url) upd.foto_url = foto_url;
     if (analisis.resumen) upd.resumen_profesional = analisis.resumen;
+    if (!prof?.telefono && analisis.datos?.telefono) upd.telefono = analisis.datos.telefono;
+    if (!prof?.ciudad && analisis.datos?.ciudad) upd.ciudad = analisis.datos.ciudad;
+    if (!prof?.linkedin && analisis.datos?.linkedin) upd.linkedin = analisis.datos.linkedin;
     if (Object.keys(upd).length) await supabase.from("profiles").update(upd).eq("id", user.id);
+
+    // Experiencia laboral (dedup por empresa+cargo)
+    const { data: exExp } = await supabase.from("experiencia_laboral").select("empresa, cargo").eq("profile_id", user.id);
+    const setExp = new Set((exExp ?? []).map((e: any) => `${norm(e.empresa)}|${norm(e.cargo)}`));
+    const nuevasExp = (analisis.experiencia ?? [])
+      .filter((e) => (e.cargo || e.empresa) && !setExp.has(`${norm(e.empresa)}|${norm(e.cargo)}`))
+      .map((e) => {
+        const p = parsePeriodo(e.periodo);
+        return {
+          profile_id: user.id,
+          empresa: e.empresa || "—",
+          cargo: e.cargo || "—",
+          descripcion: (e.logros || []).join("\n") || null,
+          fecha_inicio: p.inicio,
+          fecha_fin: p.fin,
+          actual: p.actual,
+        };
+      });
+    if (nuevasExp.length) {
+      const { error } = await supabase.from("experiencia_laboral").insert(nuevasExp);
+      if (!error) perfil_actualizado.experiencia = nuevasExp.length;
+    }
+
+    // Educación (dedup por titulo+institucion)
+    const { data: exEdu } = await supabase.from("educacion").select("titulo, institucion").eq("profile_id", user.id);
+    const setEdu = new Set((exEdu ?? []).map((e: any) => `${norm(e.titulo)}|${norm(e.institucion)}`));
+    const nuevasEdu = (analisis.educacion ?? [])
+      .filter((e) => (e.titulo || e.institucion) && !setEdu.has(`${norm(e.titulo)}|${norm(e.institucion)}`))
+      .map((e) => {
+        const p = parsePeriodo(e.periodo);
+        return {
+          profile_id: user.id,
+          titulo: e.titulo || "—",
+          institucion: e.institucion || "—",
+          fecha_inicio: p.inicio,
+          fecha_fin: p.fin,
+        };
+      });
+    if (nuevasEdu.length) {
+      const { error } = await supabase.from("educacion").insert(nuevasEdu);
+      if (!error) perfil_actualizado.educacion = nuevasEdu.length;
+    }
+
+    // Habilidades (dedup por nombre)
+    const { data: exHab } = await supabase.from("habilidades").select("nombre").eq("profile_id", user.id);
+    const setHab = new Set((exHab ?? []).map((h: any) => norm(h.nombre)));
+    const nuevasHab = (analisis.habilidades ?? [])
+      .filter((h) => h && !setHab.has(norm(h)))
+      .map((h) => ({ profile_id: user.id, nombre: h, nivel: 3 }));
+    if (nuevasHab.length) {
+      const { error } = await supabase.from("habilidades").insert(nuevasHab);
+      if (!error) perfil_actualizado.habilidades = nuevasHab.length;
+    }
   } catch {
     // no bloquear la respuesta por errores de guardado
   }
 
-  return NextResponse.json({ analisis });
+  return NextResponse.json({ analisis, perfil_actualizado });
 }
