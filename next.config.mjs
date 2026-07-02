@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: "standalone",
+  // Desactiva "Collecting build traces" (solo necesario para standalone/serverless).
+  // Se cuelga en servidores con poca memoria; usamos `next start` con node_modules completo.
+  outputFileTracing: false,
   eslint: { ignoreDuringBuilds: true },
   images: {
     remotePatterns: [
