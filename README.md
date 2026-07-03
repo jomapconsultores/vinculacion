@@ -40,7 +40,7 @@ npm run dev
 
 ### Base de datos
 Las migraciones están en `supabase/migrations/` (esquema, RLS y semillas). Aplícalas en orden
-(`0001` → `0002` → `0003`). Configura en Supabase Auth el **Site URL** y el redirect `…/auth/callback`.
+(`0001` → `0009`). Configura en Supabase Auth el **Site URL** y el redirect `…/auth/callback`.
 
 ## Cuentas de prueba (padrón sembrado)
 Al registrarte como **graduado** con una de estas cédulas, el sistema autollena tus datos:
@@ -57,6 +57,14 @@ Al registrarte como **graduado** con una de estas cédulas, el sistema autollena
 > Nota: "Aprobar" un curso en el demo simula la culminación y el aval institucional de la competencia.
 
 ## Roles
-- **graduado** — perfil, CV, empleos, competencias, cursos (`/dashboard`).
+- **graduado** — perfil, CV, empleos, competencias, cursos, evaluación psicométrica (`/dashboard`).
 - **empleador** — ofertas, candidatos, ranking IA (`/empleador`).
-- **autoridad / admin** — servicios, prácticas, indicadores (`/admin`).
+- **autoridad / admin** — servicios, prácticas, indicadores, resultados psicométricos (`/admin`).
+
+## Evaluación psicométrica (Perfil Psicolaboral)
+Prueba de autoaplicación **voluntaria** (`/dashboard/psicometria`) con criterio de psicología clínica y
+laboral: rasgos de personalidad orientados al trabajo, bienestar y riesgo psicosocial (agotamiento,
+desconexión) y un screening de ansiedad-estrés. Contenido e interpretación en `src/lib/psicometria.ts`.
+Los resultados son visibles únicamente para la propia persona y para **autoridades / administrador**
+(`/admin/psicometria`, tabla `psicometria_resultados`, RLS con `is_staff()`); no son visibles para
+empleadores ni otros graduados. Es una herramienta de orientación, no un diagnóstico clínico.

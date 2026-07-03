@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { Sidebar, type NavItem } from "@/components/Sidebar";
-import { LayoutDashboard, User, FileText, Briefcase, GraduationCap, Award, ScanText, ClipboardList, ClipboardCheck } from "lucide-react";
+import { LayoutDashboard, User, FileText, Briefcase, GraduationCap, Award, ScanText, ClipboardList, ClipboardCheck, Brain } from "lucide-react";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireProfile();
@@ -25,6 +25,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         ]),
     { href: "/dashboard/cursos", label: "Educación continua", icon: <GraduationCap className="h-4 w-4" /> },
     { href: "/dashboard/encuesta", label: "Encuesta de pertinencia", icon: <ClipboardList className="h-4 w-4" /> },
+    { href: "/dashboard/psicometria", label: "Evaluación psicométrica", icon: <Brain className="h-4 w-4" /> },
   ];
 
   const rolLabel = esEstudiante ? "Estudiante" : "Profesional";
