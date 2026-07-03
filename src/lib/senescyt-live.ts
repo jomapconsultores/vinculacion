@@ -63,7 +63,7 @@ function limpiarCelda(html: string): string {
 }
 
 export type ResultadoLive =
-  | { ok: true; titulos: TituloLive[] }
+  | { ok: true; nombre: string; titulos: TituloLive[] }
   | { ok: false; motivo: "captcha" | "sin_sesion" | "error"; detalle?: string };
 
 // 2) Envía la consulta con el captcha que resolvió el usuario y parsea la respuesta real.
@@ -116,6 +116,11 @@ export async function consultarSenescytLive(args: {
     return { ok: false, motivo: "captcha" };
   }
 
+  // Nombre del titular (aparece tras la etiqueta "Nombres:")
+  let nombre = "";
+  const mNombre = cdata.match(/Nombres:\s*<\/label>[\s\S]{0,160}?<label[^>]*>([^<]+)<\/label>/i);
+  if (mNombre) nombre = limpiarCelda(mNombre[1]);
+
   // Cada título viene en una datatable "tablaAplicaciones"
   const titulos: TituloLive[] = [];
   const tbodies = Array.from(cdata.matchAll(/<tbody[^>]*tablaAplicaciones_data[^>]*>([\s\S]*?)<\/tbody>/g));
@@ -143,5 +148,16 @@ export async function consultarSenescytLive(args: {
     }
   }
 
-  return { ok: true, titulos };
+  return { ok: true, nombre, titulos };
+}
+
+// Divide el nombre de SENESCYT (formato Apellidos + Nombres) en partes.
+// Ecuador: normalmente 2 apellidos + 1-2 nombres. Heurística: los 2 últimos
+// tokens son nombres; el resto, apellidos.
+export function partirNombre(completo: string): { nombres: string; apellidos: string } {
+  const t = (completo || "").trim().split(/\s+/).filter(Boolean);
+  if (t.length <= 1) return { nombres: t[0] ?? "", apellidos: "" };
+  if (t.length === 2) return { apellidos: t[0], nombres: t[1] };
+  if (t.length === 3) return { apellidos: t.slice(0, 2).join(" "), nombres: t[2] };
+  return { apellidos: t.slice(0, t.length - 2).join(" "), nombres: t.slice(-2).join(" ") };
 }

@@ -21,6 +21,7 @@ export function SenescytLive({ cedula }: { cedula: string | null }) {
   const [cargandoCaptcha, setCargandoCaptcha] = useState(false);
   const [consultando, setConsultando] = useState(false);
   const [titulos, setTitulos] = useState<Titulo[] | null>(null);
+  const [nombre, setNombre] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [importando, setImportando] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -58,6 +59,7 @@ export function SenescytLive({ cedula }: { cedula: string | null }) {
         if (r.status === 422 || r.status === 440) await cargarCaptcha(); // captcha malo/expirado → nuevo
         throw new Error(j.error || "No se pudo consultar");
       }
+      setNombre(j.nombre || "");
       setTitulos(j.titulos);
     } catch (e: any) {
       setError(e.message);
@@ -73,11 +75,15 @@ export function SenescytLive({ cedula }: { cedula: string | null }) {
       const r = await fetch("/api/senescyt/live/importar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ titulos }),
+        body: JSON.stringify({ titulos, nombre }),
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error);
-      setMsg(j.importados > 0 ? `Se agregaron ${j.importados} título(s) a tu educación.` : "Tus títulos ya estaban en tu perfil.");
+      const partes = [
+        j.importados > 0 ? `Se agregaron ${j.importados} título(s) a tu educación.` : "Tus títulos ya estaban en tu perfil.",
+        j.nombre_actualizado ? "Se colocó tu nombre en el perfil." : "",
+      ].filter(Boolean);
+      setMsg(partes.join(" "));
       router.refresh();
     } catch (e: any) {
       setMsg(e.message || "No se pudo importar.");
@@ -145,6 +151,12 @@ export function SenescytLive({ cedula }: { cedula: string | null }) {
             </p>
           ) : (
             <>
+              {nombre && (
+                <div className="mb-3 rounded-lg border border-teal-200 bg-white p-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Titular (según SENESCYT)</p>
+                  <p className="font-semibold text-slate-800">{nombre}</p>
+                </div>
+              )}
               <div className="space-y-2">
                 {titulos.map((t, i) => (
                   <div key={i} className="rounded-lg border border-teal-200 bg-teal-50/50 p-3">
@@ -154,7 +166,11 @@ export function SenescytLive({ cedula }: { cedula: string | null }) {
                     <p className="mt-0.5 text-xs text-slate-500">
                       {[t.institucion, t.tipo, t.fecha_registro].filter(Boolean).join(" · ")}
                     </p>
-                    {t.area && <p className="text-xs text-teal-700">{t.area}</p>}
+                    {t.area && (
+                      <p className="mt-0.5 text-xs text-teal-700">
+                        <span className="font-medium">Área:</span> {t.area}
+                      </p>
+                    )}
                     {t.numero_registro && <p className="text-xs text-slate-400">Registro: {t.numero_registro}</p>}
                   </div>
                 ))}

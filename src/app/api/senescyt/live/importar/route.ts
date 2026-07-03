@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { partirNombre } from "@/lib/senescyt-live";
 
 // Guarda los títulos consultados en vivo (SENESCYT) en la educación del usuario
 // y en el registro espejo, sin duplicar.
@@ -8,7 +9,8 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
-  const { data: prof } = await supabase.from("profiles").select("cedula").eq("id", user.id).maybeSingle();
+  const { data: prof } = await supabase
+    .from("profiles").select("cedula, nombres, apellidos, titulo").eq("id", user.id).maybeSingle();
 
   let body: any;
   try {
@@ -17,7 +19,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
   const titulos: any[] = Array.isArray(body?.titulos) ? body.titulos : [];
-  if (titulos.length === 0) return NextResponse.json({ importados: 0 });
+  const nombreSenescyt: string = String(body?.nombre || "").trim();
+
+  // Colocar el nombre en el perfil si aún no lo tiene (viene de SENESCYT)
+  let nombre_actualizado = false;
+  if (nombreSenescyt && !prof?.nombres && !prof?.apellidos) {
+    const { nombres, apellidos } = partirNombre(nombreSenescyt);
+    const upd: Record<string, any> = { nombres, apellidos };
+    if (!prof?.titulo && titulos[0]?.titulo) upd.titulo = String(titulos[0].titulo);
+    const { error } = await supabase.from("profiles").update(upd).eq("id", user.id);
+    if (!error) nombre_actualizado = true;
+  }
+
+  if (titulos.length === 0) return NextResponse.json({ importados: 0, nombre_actualizado });
 
   const norm = (v?: string | null) => (v || "").trim().toLowerCase();
   const { data: exEdu } = await supabase.from("educacion").select("titulo, institucion").eq("profile_id", user.id);
@@ -61,5 +75,5 @@ export async function POST(req: Request) {
     } catch {}
   }
 
-  return NextResponse.json({ importados: nuevos.length });
+  return NextResponse.json({ importados: nuevos.length, nombre_actualizado });
 }
