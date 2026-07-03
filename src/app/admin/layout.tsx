@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { Sidebar, type NavItem } from "@/components/Sidebar";
-import { LayoutDashboard, HeartHandshake, GraduationCap, BarChart3, TrendingUp, ClipboardList } from "lucide-react";
+import { LayoutDashboard, HeartHandshake, GraduationCap, BarChart3, TrendingUp, ClipboardList, UserCheck } from "lucide-react";
 
-const items: NavItem[] = [
+const baseItems: NavItem[] = [
   { href: "/admin", label: "Panel", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "/admin/empleabilidad", label: "Empleabilidad", icon: <TrendingUp className="h-4 w-4" /> },
   { href: "/admin/servicios", label: "Servicios", icon: <HeartHandshake className="h-4 w-4" /> },
@@ -14,7 +14,15 @@ const items: NavItem[] = [
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireProfile();
-  if (profile.rol !== "admin" && profile.rol !== "autoridad") redirect("/dashboard");
+  if (profile.rol === "empleador") redirect("/empleador");
+  if (["estudiante", "profesional", "graduado"].includes(profile.rol)) redirect("/dashboard");
+  if (profile.rol === "autoridad" && !profile.aprobado) redirect("/pendiente");
+  // Solo administrador o autoridad aprobada continúan.
+
+  const items: NavItem[] =
+    profile.rol === "admin"
+      ? [...baseItems, { href: "/admin/solicitudes", label: "Solicitudes", icon: <UserCheck className="h-4 w-4" /> }]
+      : baseItems;
 
   return (
     <div className="flex min-h-screen">

@@ -1,9 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
+export type Rol = "estudiante" | "profesional" | "graduado" | "empleador" | "autoridad" | "admin";
+
 export type Profile = {
   id: string;
-  rol: "graduado" | "empleador" | "autoridad" | "admin";
+  rol: Rol;
+  aprobado: boolean;
   cedula: string | null;
   nombres: string | null;
   apellidos: string | null;

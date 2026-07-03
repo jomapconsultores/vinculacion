@@ -4,13 +4,22 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { HeartHandshake, CheckCircle2, Loader2, MailCheck } from "lucide-react";
+import { HeartHandshake, CheckCircle2, Loader2, MailCheck, ShieldAlert } from "lucide-react";
+
+type Rol = "estudiante" | "profesional" | "empleador" | "autoridad";
+const ROLES: { id: Rol; label: string }[] = [
+  { id: "estudiante", label: "Estudiante" },
+  { id: "profesional", label: "Profesional" },
+  { id: "empleador", label: "Empleador" },
+  { id: "autoridad", label: "Autoridad" },
+];
 
 function RegisterForm() {
   const params = useSearchParams();
-  const rolInicial = params.get("rol") === "empleador" ? "empleador" : "graduado";
-
-  const [rol, setRol] = useState<"graduado" | "empleador">(rolInicial as any);
+  const rolParam = params.get("rol") as Rol | null;
+  const [rol, setRol] = useState<Rol>(
+    rolParam && ROLES.some((r) => r.id === rolParam) ? rolParam : "profesional"
+  );
   const [cedula, setCedula] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,9 +30,10 @@ function RegisterForm() {
   const [error, setError] = useState<string | null>(null);
   const [enviado, setEnviado] = useState(false);
 
-  // Vista previa del padrón en vivo
+  const pideCedula = rol === "estudiante" || rol === "profesional";
+
   useEffect(() => {
-    if (rol !== "graduado" || cedula.trim().length < 10) {
+    if (!pideCedula || cedula.trim().length < 10) {
       setPadron(null);
       return;
     }
@@ -37,7 +47,7 @@ function RegisterForm() {
       setBuscando(false);
     }, 400);
     return () => { clearTimeout(t); ctrl.abort(); };
-  }, [cedula, rol]);
+  }, [cedula, pideCedula]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -63,9 +73,14 @@ function RegisterForm() {
         <MailCheck className="mx-auto h-12 w-12 text-teal-600" />
         <h1 className="mt-4 text-xl font-bold text-slate-900">Revisa tu correo</h1>
         <p className="mt-2 text-slate-500">
-          Enviamos un enlace de verificación a <b>{email}</b>. Confírmalo para activar tu cuenta
-          e ingresar a tu perfil autollenado.
+          Enviamos un enlace de verificación a <b>{email}</b>. Confírmalo para activar tu cuenta.
         </p>
+        {rol === "autoridad" && (
+          <div className="mt-4 flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-left text-sm text-amber-800">
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            Como <b>Autoridad</b>, tras verificar tu correo un administrador debe aprobar tu acceso.
+          </div>
+        )}
         <Link href="/login" className="btn-outline mt-6">Ir a ingresar</Link>
       </div>
     );
@@ -74,27 +89,25 @@ function RegisterForm() {
   return (
     <div className="card mx-auto max-w-md p-8">
       <h1 className="text-xl font-bold text-slate-900">Crear cuenta</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Verificamos tu identidad y autollenamos tus datos institucionales.
-      </p>
+      <p className="mt-1 text-sm text-slate-500">Elige tu nivel de acceso.</p>
 
-      <div className="mt-5 grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1 text-sm">
-        {(["graduado", "empleador"] as const).map((r) => (
+      <div className="mt-5 grid grid-cols-2 gap-2">
+        {ROLES.map((r) => (
           <button
-            key={r}
+            key={r.id}
             type="button"
-            onClick={() => setRol(r)}
-            className={`rounded-md py-1.5 font-medium capitalize transition ${
-              rol === r ? "bg-white shadow-sm text-blue-900" : "text-slate-500"
+            onClick={() => setRol(r.id)}
+            className={`rounded-lg border py-2 text-sm font-medium transition ${
+              rol === r.id ? "border-blue-600 bg-blue-50 text-blue-900" : "border-slate-200 text-slate-500 hover:bg-slate-50"
             }`}
           >
-            {r}
+            {r.label}
           </button>
         ))}
       </div>
 
       <form onSubmit={onSubmit} className="mt-5 space-y-4">
-        {rol === "graduado" && (
+        {pideCedula && (
           <div>
             <label className="label">Cédula</label>
             <input
@@ -113,17 +126,12 @@ function RegisterForm() {
             {padron?.encontrado && (
               <div className="mt-2 rounded-lg border border-teal-200 bg-teal-50 p-3 text-sm">
                 <p className="flex items-center gap-1 font-medium text-teal-800">
-                  <CheckCircle2 className="h-4 w-4" /> Graduado verificado
+                  <CheckCircle2 className="h-4 w-4" /> Verificado en el padrón
                 </p>
                 <p className="text-teal-700">
                   {padron.nombres} {padron.apellidos} — {padron.carrera} ({padron.anio_graduacion})
                 </p>
               </div>
-            )}
-            {padron && !padron.encontrado && cedula.length === 10 && (
-              <p className="mt-1 text-xs text-amber-600">
-                No estás en el padrón; podrás completar tus datos manualmente.
-              </p>
             )}
           </div>
         )}
@@ -132,6 +140,13 @@ function RegisterForm() {
           <div>
             <label className="label">Nombre de la empresa</label>
             <input className="input" value={empresa} onChange={(e) => setEmpresa(e.target.value)} required />
+          </div>
+        )}
+
+        {rol === "autoridad" && (
+          <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            El acceso de Autoridad requiere aprobación del administrador después de verificar tu correo.
           </div>
         )}
 
