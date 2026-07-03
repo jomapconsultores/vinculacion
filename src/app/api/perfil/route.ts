@@ -9,6 +9,7 @@ const TABLAS: Record<string, string[]> = {
   experiencia_laboral: ["empresa", "cargo", "ciudad", "fecha_inicio", "fecha_fin", "actual", "descripcion"],
   educacion: ["institucion", "titulo", "nivel", "fecha_inicio", "fecha_fin", "area_nombre", "area_codigo"],
   habilidades: ["nombre", "nivel"],
+  cursos_persona: ["nombre", "institucion", "fecha", "area_nombre", "numero_registro"],
 };
 
 function limpiar(tabla: string, datos: any): Record<string, any> {

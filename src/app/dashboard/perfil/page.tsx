@@ -1,6 +1,7 @@
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PerfilEditor } from "@/components/PerfilEditor";
+import { CursosEditor } from "@/components/CursosEditor";
 import { SenescytPanel } from "@/components/SenescytPanel";
 import { SenescytLive } from "@/components/SenescytLive";
 import { CedulaUpload } from "@/components/CedulaUpload";
@@ -10,10 +11,11 @@ export default async function PerfilPage() {
   const profile = await requireProfile();
   const supabase = await createClient();
 
-  const [{ data: exp }, { data: edu }, { data: hab }] = await Promise.all([
+  const [{ data: exp }, { data: edu }, { data: hab }, { data: cur }] = await Promise.all([
     supabase.from("experiencia_laboral").select("*").eq("profile_id", profile.id).order("fecha_inicio", { ascending: false }),
     supabase.from("educacion").select("*").eq("profile_id", profile.id),
     supabase.from("habilidades").select("*").eq("profile_id", profile.id),
+    supabase.from("cursos_persona").select("*").eq("profile_id", profile.id).order("fecha", { ascending: false }),
   ]);
 
   return (
@@ -71,6 +73,8 @@ export default async function PerfilPage() {
         educacion={(edu as any) ?? []}
         habilidades={(hab as any) ?? []}
       />
+
+      <CursosEditor cursos={(cur as any) ?? []} />
     </div>
   );
 }

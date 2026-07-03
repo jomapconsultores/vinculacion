@@ -34,5 +34,5 @@ export async function POST(req: Request) {
     if (r.motivo === "sin_sesion") return NextResponse.json({ error: "La sesión con SENESCYT expiró. Recarga el captcha." }, { status: 440 });
     return NextResponse.json({ error: "No se pudo consultar SENESCYT. Intenta de nuevo." }, { status: 502 });
   }
-  return NextResponse.json({ ok: true, nombre: r.nombre, titulos: r.titulos });
+  return NextResponse.json({ ok: true, nombre: r.nombre, titulos: r.titulos, cursos: r.cursos });
 }

@@ -21,6 +21,7 @@ export function SenescytLive({ cedula }: { cedula: string | null }) {
   const [cargandoCaptcha, setCargandoCaptcha] = useState(false);
   const [consultando, setConsultando] = useState(false);
   const [titulos, setTitulos] = useState<Titulo[] | null>(null);
+  const [cursos, setCursos] = useState<Titulo[]>([]);
   const [nombre, setNombre] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [importando, setImportando] = useState(false);
@@ -61,6 +62,7 @@ export function SenescytLive({ cedula }: { cedula: string | null }) {
       }
       setNombre(j.nombre || "");
       setTitulos(j.titulos);
+      setCursos(j.cursos || []);
     } catch (e: any) {
       setError(e.message);
     }
@@ -75,12 +77,13 @@ export function SenescytLive({ cedula }: { cedula: string | null }) {
       const r = await fetch("/api/senescyt/live/importar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ titulos, nombre }),
+        body: JSON.stringify({ titulos, cursos, nombre }),
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error);
       const partes = [
         j.importados > 0 ? `Se agregaron ${j.importados} título(s) a tu educación.` : "Tus títulos ya estaban en tu perfil.",
+        j.cursos_importados > 0 ? `${j.cursos_importados} curso(s) agregado(s) a tu apartado de cursos.` : "",
         j.nombre_actualizado ? "Se colocó tu nombre en el perfil." : "",
       ].filter(Boolean);
       setMsg(partes.join(" "));
@@ -147,9 +150,9 @@ export function SenescytLive({ cedula }: { cedula: string | null }) {
 
       {titulos !== null && (
         <div className="mt-4">
-          {titulos.length === 0 ? (
+          {titulos.length === 0 && cursos.length === 0 ? (
             <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-500">
-              SENESCYT no registra títulos para esta cédula.
+              SENESCYT no registra títulos ni cursos para esta cédula.
             </p>
           ) : (
             <>
@@ -158,6 +161,11 @@ export function SenescytLive({ cedula }: { cedula: string | null }) {
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Titular (según SENESCYT)</p>
                   <p className="font-semibold text-slate-800">{nombre}</p>
                 </div>
+              )}
+              {titulos.length > 0 && (
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-teal-700">
+                  Títulos ({titulos.length})
+                </p>
               )}
               <div className="space-y-2">
                 {titulos.map((t, i) => (
@@ -177,6 +185,25 @@ export function SenescytLive({ cedula }: { cedula: string | null }) {
                   </div>
                 ))}
               </div>
+              {cursos.length > 0 && (
+                <div className="mt-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-blue-700">
+                    Cursos y capacitaciones ({cursos.length})
+                  </p>
+                  <div className="space-y-2">
+                    {cursos.map((c, i) => (
+                      <div key={i} className="rounded-lg border border-blue-100 bg-blue-50/40 p-3">
+                        <p className="text-sm font-medium text-slate-800">{c.titulo}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          {[c.institucion, c.fecha_registro].filter(Boolean).join(" · ")}
+                        </p>
+                        {c.area && <p className="text-xs text-blue-700"><span className="font-medium">Área:</span> {c.area}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <button className="btn-primary" onClick={importar} disabled={importando}>
                   {importando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}

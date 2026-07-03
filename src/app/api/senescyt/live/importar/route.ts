@@ -19,6 +19,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
   const titulos: any[] = Array.isArray(body?.titulos) ? body.titulos : [];
+  const cursos: any[] = Array.isArray(body?.cursos) ? body.cursos : [];
   const nombreSenescyt: string = String(body?.nombre || "").trim();
 
   // Colocar el nombre en el perfil si aún no lo tiene (viene de SENESCYT)
@@ -31,9 +32,32 @@ export async function POST(req: Request) {
     if (!error) nombre_actualizado = true;
   }
 
-  if (titulos.length === 0) return NextResponse.json({ importados: 0, nombre_actualizado });
-
   const norm = (v?: string | null) => (v || "").trim().toLowerCase();
+
+  // CURSOS -> tabla cursos_persona (apartado separado de títulos)
+  let cursos_importados = 0;
+  if (cursos.length > 0) {
+    const { data: exCur } = await supabase.from("cursos_persona").select("nombre, institucion").eq("profile_id", user.id);
+    const yaCur = new Set((exCur ?? []).map((c: any) => `${norm(c.nombre)}|${norm(c.institucion)}`));
+    const nuevosCur = cursos
+      .filter((c) => c?.titulo && !yaCur.has(`${norm(c.titulo)}|${norm(c.institucion)}`))
+      .map((c) => ({
+        profile_id: user.id,
+        nombre: String(c.titulo),
+        institucion: String(c.institucion || "—"),
+        fecha: /^\d{4}-\d{2}-\d{2}$/.test(c.fecha_registro || "") ? c.fecha_registro : null,
+        area_nombre: c.area || null,
+        numero_registro: c.numero_registro || null,
+        fuente: "senescyt",
+      }));
+    if (nuevosCur.length) {
+      const { error } = await supabase.from("cursos_persona").insert(nuevosCur);
+      if (!error) cursos_importados = nuevosCur.length;
+    }
+  }
+
+  if (titulos.length === 0) return NextResponse.json({ importados: 0, cursos_importados, nombre_actualizado });
+
   const { data: exEdu } = await supabase.from("educacion").select("titulo, institucion").eq("profile_id", user.id);
   const existentes = new Set((exEdu ?? []).map((e: any) => `${norm(e.titulo)}|${norm(e.institucion)}`));
 
@@ -75,5 +99,5 @@ export async function POST(req: Request) {
     } catch {}
   }
 
-  return NextResponse.json({ importados: nuevos.length, nombre_actualizado });
+  return NextResponse.json({ importados: nuevos.length, cursos_importados, nombre_actualizado });
 }

@@ -63,8 +63,18 @@ function limpiarCelda(html: string): string {
 }
 
 export type ResultadoLive =
-  | { ok: true; nombre: string; titulos: TituloLive[] }
+  | { ok: true; nombre: string; titulos: TituloLive[]; cursos: TituloLive[] }
   | { ok: false; motivo: "captcha" | "sin_sesion" | "error"; detalle?: string };
+
+// Distingue un curso/capacitación de un título de grado, por el nombre.
+export function esCurso(nombre: string): boolean {
+  const n = (nombre || "").toLowerCase();
+  const grado = /(ingenier|licenciad|magi.?ster|master|maestr[ií]|doctor|ph\.?d|abogad|m[eé]dic|tecn[oó]log|t[eé]cnic[oa] superior|arquitect|economist|psic[oó]log|odont[oó]log|contador|bachiller|especialista en|profesor|obstetr|enfermer|nutricion|veterinar|licenciatura)/;
+  const curso = /(curso|capacitaci|seminario|taller|jornada|congreso|suficiencia|nivelaci|programa de|certificaci|actualizaci|diplomad|educaci[oó]n continua|entrenamiento|pasant|m[oó]dulo)/;
+  if (grado.test(n)) return false;
+  if (curso.test(n)) return true;
+  return false;
+}
 
 // 2) Envía la consulta con el captcha que resolvió el usuario y parsea la respuesta real.
 export async function consultarSenescytLive(args: {
@@ -148,7 +158,9 @@ export async function consultarSenescytLive(args: {
     }
   }
 
-  return { ok: true, nombre, titulos };
+  const soloTitulos = titulos.filter((t) => !esCurso(t.titulo));
+  const cursos = titulos.filter((t) => esCurso(t.titulo));
+  return { ok: true, nombre, titulos: soloTitulos, cursos };
 }
 
 // Divide el nombre de SENESCYT (formato Apellidos + Nombres) en partes.
