@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 
 const TABLAS: Record<string, string[]> = {
   experiencia_laboral: ["empresa", "cargo", "ciudad", "fecha_inicio", "fecha_fin", "actual", "descripcion"],
-  educacion: ["institucion", "titulo", "nivel", "fecha_inicio", "fecha_fin"],
+  educacion: ["institucion", "titulo", "nivel", "fecha_inicio", "fecha_fin", "area_nombre", "area_codigo"],
   habilidades: ["nombre", "nivel"],
 };
 

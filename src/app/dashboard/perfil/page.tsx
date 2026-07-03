@@ -22,11 +22,13 @@ export default async function PerfilPage() {
         <p className="mt-1 text-slate-500">Estos datos alimentan tu CV y el match con los empleos.</p>
       </div>
 
-      {/* Identidad (autollenada, solo lectura) */}
+      {/* Identidad */}
       <section className="card p-6">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">{profile.nombres} {profile.apellidos}</h2>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {[profile.nombres, profile.apellidos].filter(Boolean).join(" ") || "Sin nombre registrado"}
+            </h2>
             <p className="text-slate-500">
               {profile.titulo ?? "—"}{profile.carreras?.nombre ? ` · ${profile.carreras.nombre}` : ""}
             </p>
@@ -41,7 +43,9 @@ export default async function PerfilPage() {
           )}
         </div>
         <p className="mt-3 text-xs text-slate-400">
-          Los datos de identidad provienen del padrón institucional y no son editables.
+          {profile.origen_padron
+            ? "Los datos de identidad provienen del padrón institucional y no son editables."
+            : "Puedes completar tu nombre abajo, o consultarlo en SENESCYT para que se llene automáticamente."}
         </p>
       </section>
 
@@ -51,7 +55,10 @@ export default async function PerfilPage() {
 
       <PerfilEditor
         profileId={profile.id}
+        nombreEditable={!profile.origen_padron}
         datos={{
+          nombres: profile.nombres ?? undefined,
+          apellidos: profile.apellidos ?? undefined,
           telefono: profile.telefono ?? undefined,
           ciudad: profile.ciudad ?? undefined,
           linkedin: profile.linkedin ?? undefined,

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Plus, Trash2, Save, Loader2, Briefcase, GraduationCap, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
 
 type Exp = { id?: number; empresa: string; cargo: string; ciudad?: string; fecha_inicio?: string; fecha_fin?: string; actual?: boolean; descripcion?: string };
-type Edu = { id?: number; institucion: string; titulo: string; nivel?: string; fecha_inicio?: string; fecha_fin?: string };
+type Edu = { id?: number; institucion: string; titulo: string; nivel?: string; fecha_inicio?: string; fecha_fin?: string; area_nombre?: string | null; area_codigo?: string | null };
 type Hab = { id?: number; nombre: string; nivel: number };
 
 type Estado = "idle" | "guardando" | "guardado" | "error";
@@ -27,12 +27,14 @@ export function PerfilEditor({
   experiencia,
   educacion,
   habilidades,
+  nombreEditable = false,
 }: {
   profileId?: string;
-  datos: { telefono?: string; ciudad?: string; linkedin?: string; resumen_profesional?: string };
+  datos: { nombres?: string; apellidos?: string; telefono?: string; ciudad?: string; linkedin?: string; resumen_profesional?: string };
   experiencia: Exp[];
   educacion: Edu[];
   habilidades: Hab[];
+  nombreEditable?: boolean;
 }) {
   const [info, setInfo] = useState(datos);
   const [exps, setExps] = useState<Exp[]>(experiencia);
@@ -127,8 +129,14 @@ export function PerfilEditor({
 
       {/* Datos de contacto + resumen */}
       <section className="card p-6">
-        <h2 className="font-semibold text-slate-900">Datos de contacto</h2>
+        <h2 className="font-semibold text-slate-900">Datos personales y de contacto</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          {nombreEditable && (
+            <>
+              <div><label className="label">Nombres</label><input className="input" value={info.nombres ?? ""} onChange={(e) => setInfo({ ...info, nombres: e.target.value })} onBlur={guardarInfo} placeholder="Tus nombres" /></div>
+              <div><label className="label">Apellidos</label><input className="input" value={info.apellidos ?? ""} onChange={(e) => setInfo({ ...info, apellidos: e.target.value })} onBlur={guardarInfo} placeholder="Tus apellidos" /></div>
+            </>
+          )}
           <div><label className="label">Teléfono</label><input className="input" value={info.telefono ?? ""} onChange={(e) => setInfo({ ...info, telefono: e.target.value })} onBlur={guardarInfo} /></div>
           <div><label className="label">Ciudad</label><input className="input" value={info.ciudad ?? ""} onChange={(e) => setInfo({ ...info, ciudad: e.target.value })} onBlur={guardarInfo} /></div>
           <div className="sm:col-span-2"><label className="label">LinkedIn</label><input className="input" value={info.linkedin ?? ""} onChange={(e) => setInfo({ ...info, linkedin: e.target.value })} onBlur={guardarInfo} placeholder="https://linkedin.com/in/..." /></div>
@@ -178,8 +186,22 @@ export function PerfilEditor({
           {edus.length === 0 && <p className="text-sm text-slate-400">Aún no agregas formación.</p>}
           {edus.map((e, i) => (
             <div key={e.id ?? i} className="grid gap-3 rounded-lg border border-slate-200 p-4 sm:grid-cols-2">
-              <input className="input" placeholder="Título" value={e.titulo} onChange={(ev) => { const c = [...edus]; c[i] = { ...e, titulo: ev.target.value }; setEdus(c); }} onBlur={() => saveEdu(edus[i])} />
-              <input className="input" placeholder="Institución" value={e.institucion} onChange={(ev) => { const c = [...edus]; c[i] = { ...e, institucion: ev.target.value }; setEdus(c); }} onBlur={() => saveEdu(edus[i])} />
+              <div>
+                <label className="label">Título</label>
+                <input className="input" placeholder="Título" value={e.titulo} onChange={(ev) => { const c = [...edus]; c[i] = { ...e, titulo: ev.target.value }; setEdus(c); }} onBlur={() => saveEdu(edus[i])} />
+              </div>
+              <div>
+                <label className="label">Institución</label>
+                <input className="input" placeholder="Institución" value={e.institucion} onChange={(ev) => { const c = [...edus]; c[i] = { ...e, institucion: ev.target.value }; setEdus(c); }} onBlur={() => saveEdu(edus[i])} />
+              </div>
+              <div>
+                <label className="label">Fecha (registro / graduación)</label>
+                <input className="input" type="date" value={e.fecha_fin?.slice(0, 10) ?? ""} onChange={(ev) => { const c = [...edus]; c[i] = { ...e, fecha_fin: ev.target.value || undefined }; setEdus(c); }} onBlur={() => saveEdu(edus[i])} />
+              </div>
+              <div>
+                <label className="label">Área de conocimiento</label>
+                <input className="input" placeholder="Ej. Ciencias Sociales, Educación Comercial y Derecho" value={e.area_nombre ?? ""} onChange={(ev) => { const c = [...edus]; c[i] = { ...e, area_nombre: ev.target.value }; setEdus(c); }} onBlur={() => saveEdu(edus[i])} />
+              </div>
               <button className="btn-ghost text-red-500 sm:col-span-2 justify-self-start" onClick={() => delEdu(e.id)}><Trash2 className="h-4 w-4" /> Eliminar</button>
             </div>
           ))}
