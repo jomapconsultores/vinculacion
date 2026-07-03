@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { PasswordInput } from "@/components/PasswordInput";
 import { HeartHandshake, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
@@ -43,7 +44,7 @@ export default function LoginPage() {
           </div>
           <div>
             <label className="label">Contraseña</label>
-            <input type="password" className="input" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <PasswordInput value={password} onChange={setPassword} required />
           </div>
           {error && <p className="rounded-lg bg-red-50 p-2 text-sm text-red-600">Credenciales inválidas o correo sin verificar.</p>}
           <button className="btn-primary w-full" disabled={loading}>

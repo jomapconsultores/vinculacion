@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { PasswordInput } from "@/components/PasswordInput";
 import { HeartHandshake, CheckCircle2, Loader2, MailCheck, ShieldAlert, GraduationCap } from "lucide-react";
 
 type Rol = "estudiante" | "profesional" | "empleador" | "autoridad";
@@ -174,7 +175,8 @@ function RegisterForm() {
         </div>
         <div>
           <label className="label">Contraseña</label>
-          <input type="password" className="input" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
+          <PasswordInput value={password} onChange={setPassword} minLength={6} required autoComplete="new-password" />
+          <p className="mt-1 text-xs text-slate-400">Mínimo 6 caracteres.</p>
         </div>
 
         {error && <p className="rounded-lg bg-red-50 p-2 text-sm text-red-600">{error}</p>}
