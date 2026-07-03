@@ -2,14 +2,76 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, Loader2, CheckCircle2, GraduationCap, Award } from "lucide-react";
+import { Clock, Loader2, CheckCircle2, GraduationCap, Award, Calendar, Users, ExternalLink } from "lucide-react";
+
+export type Curso = {
+  id: number;
+  nombre: string;
+  descripcion: string;
+  duracion_horas: number | null;
+  modalidad: string;
+  competencia?: string | null;
+  origen?: string;
+  categoria?: string | null;
+  fecha_inicio?: string | null;
+  fecha_fin?: string | null;
+  publico_objetivo?: string | null;
+  precio?: number | null;
+  url?: string | null;
+};
+
+function fechaCorta(iso: string) {
+  return new Date(iso).toLocaleDateString("es-EC", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+// Programa real de ucuenca.edu.ec: catálogo informativo, sin flujo de aprobación
+// simulada (esta app no puede verificar una inscripción/culminación real externa).
+function CursoExterno({ curso, destacado }: { curso: Curso; destacado: boolean }) {
+  return (
+    <div className={`card p-6 ${destacado ? "ring-2 ring-teal-400" : ""}`}>
+      <div className="flex items-start justify-between gap-2">
+        <GraduationCap className="h-8 w-8 text-blue-700" />
+        {curso.categoria && <span className="badge bg-blue-50 text-blue-700">{curso.categoria}</span>}
+      </div>
+      <h3 className="mt-3 font-semibold text-slate-900">{curso.nombre}</h3>
+      <p className="mt-1 text-sm text-slate-500">{curso.descripcion}</p>
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-400">
+        <span>{curso.modalidad}</span>
+        {curso.fecha_inicio && curso.fecha_fin && (
+          <span className="flex items-center gap-1">
+            <Calendar className="h-3.5 w-3.5" /> {fechaCorta(curso.fecha_inicio)} – {fechaCorta(curso.fecha_fin)}
+          </span>
+        )}
+        {curso.publico_objetivo && (
+          <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {curso.publico_objetivo}</span>
+        )}
+      </div>
+      <div className="mt-4 flex items-center gap-3">
+        <a
+          href={curso.url ?? "#"}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn-primary flex-1"
+        >
+          <ExternalLink className="h-4 w-4" /> Ver programa e inscribirme
+        </a>
+        {curso.precio != null && curso.precio > 0 && (
+          <span className="shrink-0 text-sm font-semibold text-slate-700">${curso.precio}</span>
+        )}
+      </div>
+      <p className="mt-2 text-center text-[11px] text-slate-400">
+        Programa oficial de la Universidad de Cuenca. La inscripción se completa en su sitio.
+      </p>
+    </div>
+  );
+}
 
 export function CursoCard({
   curso,
   estadoInicial,
   destacado,
 }: {
-  curso: { id: number; nombre: string; descripcion: string; duracion_horas: number; modalidad: string; competencia?: string | null };
+  curso: Curso;
   estadoInicial: "ninguno" | "en_progreso" | "aprobado";
   destacado: boolean;
 }) {
@@ -17,6 +79,8 @@ export function CursoCard({
   const [estado, setEstado] = useState(estadoInicial);
   const [loading, setLoading] = useState<null | "inscribir" | "aprobar">(null);
   const [error, setError] = useState<string | null>(null);
+
+  if (curso.origen === "ucuenca") return <CursoExterno curso={curso} destacado={destacado} />;
 
   async function accionar(accion: "inscribir" | "aprobar") {
     setLoading(accion);
