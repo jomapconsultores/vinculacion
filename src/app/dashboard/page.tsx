@@ -67,14 +67,20 @@ export default async function DashboardHome() {
             <li key={p.label}>
               <Link href={p.href} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-slate-50">
                 {p.ok ? (
-                  <CheckCircle2 className="h-5 w-5 text-teal-600" />
+                  <CheckCircle2 className="h-5 w-5 shrink-0 text-teal-600" />
                 ) : (
-                  <Circle className="h-5 w-5 text-slate-300" />
+                  <Circle className="h-5 w-5 shrink-0 text-slate-300" />
                 )}
-                <span className={p.ok ? "text-slate-500 line-through" : "font-medium text-slate-700"}>
+                <span className={p.ok ? "font-medium text-slate-800" : "font-medium text-slate-700"}>
                   {p.label}
                 </span>
-                {!p.ok && <ArrowRight className="ml-auto h-4 w-4 text-slate-300" />}
+                {p.ok ? (
+                  <span className="badge ml-auto bg-teal-50 text-teal-700">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Cumplido
+                  </span>
+                ) : (
+                  <ArrowRight className="ml-auto h-4 w-4 text-slate-300" />
+                )}
               </Link>
             </li>
           ))}

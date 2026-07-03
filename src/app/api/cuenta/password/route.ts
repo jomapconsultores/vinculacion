@@ -1,0 +1,21 @@
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { passwordCorrecta } from "@/lib/verificar-password";
+
+export async function POST(req: Request) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+
+  const { actual, nueva } = await req.json().catch(() => ({}));
+  if (!nueva || nueva.length < 6) {
+    return NextResponse.json({ error: "La nueva contraseña debe tener al menos 6 caracteres." }, { status: 400 });
+  }
+  if (!(await passwordCorrecta(user.email, actual || ""))) {
+    return NextResponse.json({ error: "Tu contraseña actual no es correcta." }, { status: 403 });
+  }
+
+  const { error } = await supabase.auth.updateUser({ password: nueva });
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  return NextResponse.json({ ok: true });
+}

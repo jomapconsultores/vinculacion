@@ -1,107 +1,147 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { Plus, Trash2, Save, Loader2, Briefcase, GraduationCap, Sparkles } from "lucide-react";
+import { Plus, Trash2, Save, Loader2, Briefcase, GraduationCap, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
 
 type Exp = { id?: number; empresa: string; cargo: string; ciudad?: string; fecha_inicio?: string; fecha_fin?: string; actual?: boolean; descripcion?: string };
 type Edu = { id?: number; institucion: string; titulo: string; nivel?: string; fecha_inicio?: string; fecha_fin?: string };
 type Hab = { id?: number; nombre: string; nivel: number };
 
+type Estado = "idle" | "guardando" | "guardado" | "error";
+
+async function api(body: any): Promise<any> {
+  const r = await fetch("/api/perfil", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    const j = await r.json().catch(() => ({}));
+    throw new Error(j.error || "No se pudo guardar");
+  }
+  return r.json();
+}
+
 export function PerfilEditor({
-  profileId,
   datos,
   experiencia,
   educacion,
   habilidades,
 }: {
-  profileId: string;
+  profileId?: string;
   datos: { telefono?: string; ciudad?: string; linkedin?: string; resumen_profesional?: string };
   experiencia: Exp[];
   educacion: Edu[];
   habilidades: Hab[];
 }) {
-  const supabase = createClient();
   const [info, setInfo] = useState(datos);
   const [exps, setExps] = useState<Exp[]>(experiencia);
   const [edus, setEdus] = useState<Edu[]>(educacion);
   const [habs, setHabs] = useState<Hab[]>(habilidades);
   const [savingInfo, setSavingInfo] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [estado, setEstado] = useState<Estado>("idle");
+
+  // Indicador global de guardado automático
+  async function autoguardar(fn: () => Promise<void>) {
+    setEstado("guardando");
+    try {
+      await fn();
+      setEstado("guardado");
+      setTimeout(() => setEstado((e) => (e === "guardado" ? "idle" : e)), 2000);
+    } catch {
+      setEstado("error");
+    }
+  }
 
   async function guardarInfo() {
     setSavingInfo(true);
-    const { error } = await supabase.from("profiles").update(info).eq("id", profileId);
+    try {
+      await api({ accion: "datos", datos: info });
+      setEstado("guardado");
+      setTimeout(() => setEstado("idle"), 2000);
+    } catch {
+      setEstado("error");
+    }
     setSavingInfo(false);
-    setMsg(error ? `No se pudo guardar: ${error.message}` : "Datos guardados");
-    setTimeout(() => setMsg(null), 3000);
   }
 
   async function addExp() {
-    const nuevo: Exp = { empresa: "", cargo: "" };
-    const { data } = await supabase.from("experiencia_laboral").insert({ ...nuevo, profile_id: profileId }).select().single();
-    if (data) setExps([...exps, data as Exp]);
+    const j = await api({ accion: "crear", tabla: "experiencia_laboral", datos: { empresa: "", cargo: "" } });
+    if (j.fila) setExps([...exps, j.fila as Exp]);
   }
-  async function saveExp(e: Exp) {
+  function saveExp(e: Exp) {
     if (!e.id) return;
-    await supabase.from("experiencia_laboral").update({
-      empresa: e.empresa, cargo: e.cargo, ciudad: e.ciudad, fecha_inicio: e.fecha_inicio || null,
-      fecha_fin: e.fecha_fin || null, actual: e.actual, descripcion: e.descripcion,
-    }).eq("id", e.id);
+    autoguardar(() => api({ accion: "actualizar", tabla: "experiencia_laboral", id: e.id, datos: e }));
   }
   async function delExp(id?: number) {
     if (!id) return;
-    await supabase.from("experiencia_laboral").delete().eq("id", id);
+    await autoguardar(() => api({ accion: "eliminar", tabla: "experiencia_laboral", id }));
     setExps(exps.filter((x) => x.id !== id));
   }
 
   async function addEdu() {
-    const { data } = await supabase.from("educacion").insert({ profile_id: profileId, institucion: "", titulo: "" }).select().single();
-    if (data) setEdus([...edus, data as Edu]);
+    const j = await api({ accion: "crear", tabla: "educacion", datos: { institucion: "", titulo: "" } });
+    if (j.fila) setEdus([...edus, j.fila as Edu]);
   }
-  async function saveEdu(e: Edu) {
+  function saveEdu(e: Edu) {
     if (!e.id) return;
-    await supabase.from("educacion").update({ institucion: e.institucion, titulo: e.titulo, nivel: e.nivel, fecha_inicio: e.fecha_inicio || null, fecha_fin: e.fecha_fin || null }).eq("id", e.id);
+    autoguardar(() => api({ accion: "actualizar", tabla: "educacion", id: e.id, datos: e }));
   }
   async function delEdu(id?: number) {
     if (!id) return;
-    await supabase.from("educacion").delete().eq("id", id);
+    await autoguardar(() => api({ accion: "eliminar", tabla: "educacion", id }));
     setEdus(edus.filter((x) => x.id !== id));
   }
 
   async function addHab() {
-    const { data } = await supabase.from("habilidades").insert({ profile_id: profileId, nombre: "", nivel: 3 }).select().single();
-    if (data) setHabs([...habs, data as Hab]);
+    const j = await api({ accion: "crear", tabla: "habilidades", datos: { nombre: "", nivel: 3 } });
+    if (j.fila) setHabs([...habs, j.fila as Hab]);
   }
-  async function saveHab(h: Hab) {
+  function saveHab(h: Hab) {
     if (!h.id) return;
-    await supabase.from("habilidades").update({ nombre: h.nombre, nivel: h.nivel }).eq("id", h.id);
+    autoguardar(() => api({ accion: "actualizar", tabla: "habilidades", id: h.id, datos: h }));
   }
   async function delHab(id?: number) {
     if (!id) return;
-    await supabase.from("habilidades").delete().eq("id", id);
+    await autoguardar(() => api({ accion: "eliminar", tabla: "habilidades", id }));
     setHabs(habs.filter((x) => x.id !== id));
   }
 
   return (
     <div className="space-y-6">
+      {/* Indicador de guardado automático (flotante) */}
+      {estado !== "idle" && (
+        <div className="fixed bottom-4 right-4 z-30">
+          <span
+            className={`badge shadow-sm ${
+              estado === "error" ? "bg-red-50 text-red-600" : estado === "guardando" ? "bg-slate-100 text-slate-600" : "bg-teal-50 text-teal-700"
+            }`}
+          >
+            {estado === "guardando" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {estado === "guardado" && <CheckCircle2 className="h-3.5 w-3.5" />}
+            {estado === "error" && <AlertCircle className="h-3.5 w-3.5" />}
+            {estado === "guardando" ? "Guardando…" : estado === "guardado" ? "Guardado" : "No se pudo guardar"}
+          </span>
+        </div>
+      )}
+
       {/* Datos de contacto + resumen */}
       <section className="card p-6">
         <h2 className="font-semibold text-slate-900">Datos de contacto</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <div><label className="label">Teléfono</label><input className="input" value={info.telefono ?? ""} onChange={(e) => setInfo({ ...info, telefono: e.target.value })} /></div>
-          <div><label className="label">Ciudad</label><input className="input" value={info.ciudad ?? ""} onChange={(e) => setInfo({ ...info, ciudad: e.target.value })} /></div>
-          <div className="sm:col-span-2"><label className="label">LinkedIn</label><input className="input" value={info.linkedin ?? ""} onChange={(e) => setInfo({ ...info, linkedin: e.target.value })} placeholder="https://linkedin.com/in/..." /></div>
+          <div><label className="label">Teléfono</label><input className="input" value={info.telefono ?? ""} onChange={(e) => setInfo({ ...info, telefono: e.target.value })} onBlur={guardarInfo} /></div>
+          <div><label className="label">Ciudad</label><input className="input" value={info.ciudad ?? ""} onChange={(e) => setInfo({ ...info, ciudad: e.target.value })} onBlur={guardarInfo} /></div>
+          <div className="sm:col-span-2"><label className="label">LinkedIn</label><input className="input" value={info.linkedin ?? ""} onChange={(e) => setInfo({ ...info, linkedin: e.target.value })} onBlur={guardarInfo} placeholder="https://linkedin.com/in/..." /></div>
           <div className="sm:col-span-2">
             <label className="label">Resumen profesional</label>
-            <textarea className="input min-h-[90px]" value={info.resumen_profesional ?? ""} onChange={(e) => setInfo({ ...info, resumen_profesional: e.target.value })} placeholder="Un párrafo sobre ti. La IA puede ayudarte a redactarlo desde tu CV." />
+            <textarea className="input min-h-[90px]" value={info.resumen_profesional ?? ""} onChange={(e) => setInfo({ ...info, resumen_profesional: e.target.value })} onBlur={guardarInfo} placeholder="Un párrafo sobre ti. La IA puede ayudarte a redactarlo desde tu CV." />
           </div>
         </div>
         <div className="mt-4 flex items-center gap-3">
           <button className="btn-primary" onClick={guardarInfo} disabled={savingInfo}>
             {savingInfo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Guardar
           </button>
-          {msg && <span className="text-sm text-teal-600">{msg}</span>}
+          <span className="text-xs text-slate-400">Los cambios se guardan automáticamente.</span>
         </div>
       </section>
 

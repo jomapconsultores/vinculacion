@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { HeartHandshake, LogOut, Menu, X } from "lucide-react";
+import { HeartHandshake, LogOut, Menu, X, Settings } from "lucide-react";
 import { iniciales } from "@/lib/utils";
 
 export type NavItem = { href: string; label: string; icon: React.ReactNode };
@@ -68,6 +68,13 @@ function Contenido({
             <p className="text-xs capitalize text-slate-400">{rol}</p>
           </div>
         </div>
+        <Link
+          href="/cuenta"
+          onClick={onNavigate}
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+        >
+          <Settings className="h-4 w-4" /> Mi cuenta
+        </Link>
         <form action="/auth/signout" method="post">
           <button className="btn-ghost mt-1 w-full justify-start text-slate-500">
             <LogOut className="h-4 w-4" /> Salir
