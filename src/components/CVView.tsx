@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Loader2, Printer, Lightbulb } from "lucide-react";
+import { Sparkles, Loader2, FileDown, FileText, Lightbulb } from "lucide-react";
 
 type CV = {
   resumen?: string;
@@ -28,6 +28,43 @@ export function CVView({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ia, setIa] = useState(generadoIa);
+  const [descargando, setDescargando] = useState<"word" | "pdf" | null>(null);
+
+  async function descargar(formato: "word" | "pdf") {
+    if (!cv) return;
+    setDescargando(formato);
+    setError(null);
+    try {
+      const r = await fetch("/api/cv/exportar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          formato,
+          cv: {
+            datos: { nombre, email: contacto },
+            nivel_profesional: titulo,
+            resumen: cv.resumen,
+            experiencia: cv.experiencia,
+            educacion: cv.educacion,
+            habilidades: cv.habilidades,
+          },
+        }),
+      });
+      if (!r.ok) throw new Error("No se pudo generar el archivo");
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = formato === "word" ? "hoja-de-vida.docx" : "hoja-de-vida.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      setError(e.message);
+    }
+    setDescargando(null);
+  }
 
   async function generar() {
     setLoading(true);
@@ -53,9 +90,16 @@ export function CVView({
         </div>
         <div className="flex gap-2">
           {cv && (
-            <button className="btn-outline" onClick={() => window.print()}>
-              <Printer className="h-4 w-4" /> Imprimir / PDF
-            </button>
+            <>
+              <button className="btn-outline" onClick={() => descargar("pdf")} disabled={descargando !== null}>
+                {descargando === "pdf" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                Descargar PDF
+              </button>
+              <button className="btn-outline" onClick={() => descargar("word")} disabled={descargando !== null}>
+                {descargando === "word" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                Word
+              </button>
+            </>
           )}
           <button className="btn-primary" onClick={generar} disabled={loading}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}

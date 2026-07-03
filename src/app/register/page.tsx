@@ -61,6 +61,27 @@ function RegisterForm() {
     setError(null);
     setLoading(true);
     const supabase = createClient();
+
+    if (rol === "estudiante") {
+      // Los estudiantes entran directo: cuenta confirmada en el servidor, sin correo.
+      const r = await fetch("/api/registro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, cedula, rol }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setLoading(false);
+        setError(j.error || "No se pudo crear la cuenta");
+        return;
+      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      setLoading(false);
+      if (error) setError(error.message);
+      else window.location.assign("/dashboard");
+      return;
+    }
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -166,6 +187,13 @@ function RegisterForm() {
           <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
             <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
             El acceso de Autoridad requiere aprobación del administrador después de verificar tu correo.
+          </div>
+        )}
+
+        {rol === "estudiante" && (
+          <div className="flex items-start gap-2 rounded-lg bg-teal-50 p-3 text-sm text-teal-800">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+            Como estudiante entras directamente, sin verificación de correo.
           </div>
         )}
 
