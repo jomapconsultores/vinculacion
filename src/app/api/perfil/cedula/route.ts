@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { extraerTexto } from "@/lib/extract";
 import { askJSON } from "@/lib/ai";
+import { cedulaValida } from "@/lib/seguridad";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -61,17 +62,25 @@ export async function POST(req: Request) {
 
   const nombres = (d.nombres || "").trim();
   const apellidos = (d.apellidos || "").trim();
-  const cedulaLeida = (d.cedula || "").replace(/\D/g, "");
+  const cedulaLeidaBruta = (d.cedula || "").replace(/\D/g, "");
+  // Un OCR ruidoso puede devolver 10 dígitos "con forma" pero inventados; el checksum
+  // oficial descarta esos casos en vez de compararlos con confianza contra la cuenta.
+  const cedulaLeida = cedulaValida(cedulaLeidaBruta) ? cedulaLeidaBruta : "";
   if (!nombres && !apellidos) {
     return NextResponse.json({ error: "No se reconocieron el nombre y apellidos en la imagen." }, { status: 422 });
   }
 
   // 3) Verificación contra la cédula de la cuenta
-  const coincide = !!prof?.cedula && cedulaLeida.length === 10 && cedulaLeida === prof.cedula;
+  const coincide = !!prof?.cedula && !!cedulaLeida && cedulaLeida === prof.cedula;
 
-  // 4) Guardar en el perfil
-  const { error } = await supabase.from("profiles").update({ nombres, apellidos }).eq("id", user.id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // 4) Guardar en el perfil SOLO si la cédula leída coincide con la de la cuenta.
+  // Si no coincide (o no se pudo leer una cédula válida), no tocamos el perfil: de lo
+  // contrario cualquier foto subida —de otra persona o mal leída— sobrescribiría el
+  // nombre de la cuenta sin verificación real.
+  if (coincide) {
+    const { error } = await supabase.from("profiles").update({ nombres, apellidos }).eq("id", user.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   return NextResponse.json({
     ok: true,
@@ -80,5 +89,6 @@ export async function POST(req: Request) {
     cedula_leida: cedulaLeida,
     cedula_cuenta: prof?.cedula ?? null,
     coincide,
+    actualizado: coincide,
   });
 }

@@ -7,7 +7,7 @@ export function CedulaUpload() {
   const [drag, setDrag] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [res, setRes] = useState<{ nombres: string; apellidos: string; coincide: boolean; cedula_leida: string } | null>(null);
+  const [res, setRes] = useState<{ nombres: string; apellidos: string; coincide: boolean; cedula_leida: string; actualizado: boolean } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function procesar(file: File) {
@@ -21,8 +21,8 @@ export function CedulaUpload() {
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "No se pudo procesar la cédula");
       setRes(j);
-      // Recargar para reflejar el nombre en toda la página (identidad + campos editables)
-      setTimeout(() => window.location.reload(), 2500);
+      // Solo recargamos si el perfil realmente se actualizó (cédula verificada).
+      if (j.actualizado) setTimeout(() => window.location.reload(), 2500);
     } catch (e: any) {
       setError(e.message);
     }
@@ -95,11 +95,21 @@ export function CedulaUpload() {
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 text-amber-600">
-                <AlertTriangle className="h-3.5 w-3.5" /> El número de cédula ({res.cedula_leida || "?"}) no coincide con el de tu cuenta.
+                <AlertTriangle className="h-3.5 w-3.5" />
+                {res.cedula_leida
+                  ? `El número de cédula (${res.cedula_leida}) no coincide con el de tu cuenta.`
+                  : "No pudimos leer con certeza el número de cédula en la imagen."}
               </span>
             )}
           </p>
-          <p className="mt-2 text-xs text-slate-500">Actualizando tu perfil…</p>
+          {res.actualizado ? (
+            <p className="mt-2 text-xs text-slate-500">Actualizando tu perfil…</p>
+          ) : (
+            <p className="mt-2 text-xs text-amber-700">
+              Tu perfil <b>no se modificó</b>. Sube una foto nítida del anverso de tu propia cédula, o si
+              el número registrado en tu cuenta es incorrecto, contacta a soporte.
+            </p>
+          )}
         </div>
       )}
     </section>
