@@ -139,11 +139,10 @@ async function generarPDF(cv: CVAnalisis): Promise<Buffer> {
   if (subt) page.drawText(sanitize(subt), { x: M, y: PH - 78, size: 11, font: HB, color: TEAL_200 });
   const contacto = join([cv.datos?.email, cv.datos?.telefono, cv.datos?.ciudad, cv.datos?.linkedin]);
   if (contacto) {
-    for (const ln of wrap(contacto, H, 9, CW - 110)) {
-      page.drawText(ln, { x: M, y: PH - 98 - 0, size: 9, font: H, color: rgb(0.85, 0.89, 0.97) });
-      break;
+    const [primeraLinea] = wrap(contacto, H, 9, CW - 110);
+    if (primeraLinea) {
+      page.drawText(primeraLinea, { x: M, y: PH - 100, size: 9, font: H, color: rgb(0.85, 0.89, 0.97) });
     }
-    page.drawText(sanitize(contacto).slice(0, 120), { x: M, y: PH - 100, size: 9, font: H, color: rgb(0.85, 0.89, 0.97) });
   }
   // Foto
   if (foto) {

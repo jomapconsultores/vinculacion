@@ -16,7 +16,7 @@ export default async function EmpleadorLayout({ children }: { children: React.Re
   if (profile.rol !== "empleador") redirect("/dashboard");
 
   return (
-    <div className="flex min-h-screen">
+    <div className="min-h-screen lg:flex">
       <Sidebar
         items={items}
         nombre={profile.nombres ?? "Empleador"}

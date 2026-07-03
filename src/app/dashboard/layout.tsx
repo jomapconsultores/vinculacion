@@ -30,7 +30,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const rolLabel = esEstudiante ? "Estudiante" : "Profesional";
 
   return (
-    <div className="flex min-h-screen">
+    <div className="min-h-screen lg:flex">
       <Sidebar
         items={items}
         nombre={profile.nombres ?? rolLabel}
