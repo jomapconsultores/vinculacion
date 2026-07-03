@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { HeartHandshake, CheckCircle2, Loader2, MailCheck, ShieldAlert } from "lucide-react";
+import { HeartHandshake, CheckCircle2, Loader2, MailCheck, ShieldAlert, GraduationCap } from "lucide-react";
 
 type Rol = "estudiante" | "profesional" | "empleador" | "autoridad";
 const ROLES: { id: Rol; label: string }[] = [
@@ -25,6 +25,7 @@ function RegisterForm() {
   const [password, setPassword] = useState("");
   const [empresa, setEmpresa] = useState("");
   const [padron, setPadron] = useState<any>(null);
+  const [senescyt, setSenescyt] = useState<any>(null);
   const [buscando, setBuscando] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,14 +36,19 @@ function RegisterForm() {
   useEffect(() => {
     if (!pideCedula || cedula.trim().length < 10) {
       setPadron(null);
+      setSenescyt(null);
       return;
     }
     const ctrl = new AbortController();
     setBuscando(true);
     const t = setTimeout(async () => {
       try {
-        const r = await fetch(`/api/padron?cedula=${cedula.trim()}`, { signal: ctrl.signal });
-        setPadron(await r.json());
+        const [rp, rs] = await Promise.all([
+          fetch(`/api/padron?cedula=${cedula.trim()}`, { signal: ctrl.signal }),
+          fetch(`/api/senescyt?cedula=${cedula.trim()}`, { signal: ctrl.signal }),
+        ]);
+        setPadron(await rp.json());
+        setSenescyt(await rs.json());
       } catch {}
       setBuscando(false);
     }, 400);
@@ -131,6 +137,18 @@ function RegisterForm() {
                 <p className="text-teal-700">
                   {padron.nombres} {padron.apellidos} — {padron.carrera} ({padron.anio_graduacion})
                 </p>
+              </div>
+            )}
+            {senescyt?.encontrado && (
+              <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm">
+                <p className="flex items-center gap-1 font-medium text-blue-800">
+                  <GraduationCap className="h-4 w-4" /> Títulos registrados en SENESCYT
+                </p>
+                <ul className="mt-1 space-y-0.5 text-blue-700">
+                  {senescyt.titulos.map((t: any, i: number) => (
+                    <li key={i} className="text-xs">{t.titulo} — {t.institucion} ({t.tipo})</li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>

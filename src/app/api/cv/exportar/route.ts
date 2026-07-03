@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
+import { promises as fs } from "fs";
+import path from "path";
 import {
   Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle,
-  Table, TableRow, TableCell, WidthType, ImageRun, VerticalAlign,
+  Table, TableRow, TableCell, WidthType, ImageRun, VerticalAlign, Header,
+  HorizontalPositionAlign, HorizontalPositionRelativeFrom,
+  VerticalPositionAlign, VerticalPositionRelativeFrom, TextWrappingType,
 } from "docx";
 import { PDFDocument, StandardFonts, rgb, PDFFont, PDFImage } from "pdf-lib";
 import { createClient } from "@/lib/supabase/server";
@@ -27,6 +31,14 @@ function join(parts: (string | null | undefined)[], sep = " · "): string {
 }
 const has = (s?: string | null) => s != null && String(s).trim() !== "";
 const capsPeriodo = (c: any) => join([c.institucion, c.horas ? `${c.horas} h` : null, c.anio ? String(c.anio) : null]);
+
+async function loadLogo(file: string): Promise<Uint8Array | null> {
+  try {
+    return new Uint8Array(await fs.readFile(path.join(process.cwd(), "public", file)));
+  } catch {
+    return null;
+  }
+}
 
 async function loadImageBytes(url?: string | null): Promise<{ bytes: Uint8Array; kind: "jpg" | "png" } | null> {
   if (!url) return null;
@@ -67,11 +79,23 @@ async function generarPDF(cv: CVAnalisis): Promise<Buffer> {
   const CW = W - M * 2;
   const BAND = 140;
 
+  const logoBytes = await loadLogo("logo-ucuenca.png");
+  const logo = logoBytes ? await doc.embedPng(logoBytes).catch(() => null) : null;
+  const TOPSTRIP = logo ? 48 : 0;
+
   let page = doc.addPage([W, PH]);
   let y = PH;
   let pageNum = 1;
 
   const foto = await loadImageBytes(cv.foto_url);
+
+  function watermark() {
+    if (!logo) return;
+    const ww = 380;
+    const wh = ww * (logo.height / logo.width);
+    page.drawImage(logo, { x: (W - ww) / 2, y: (PH - wh) / 2, width: ww, height: wh, opacity: 0.08 });
+  }
+  watermark();
 
   function wrap(text: string, font: PDFFont, size: number, maxW: number): string[] {
     const words = sanitize(text).split(/\s+/);
@@ -96,6 +120,7 @@ async function generarPDF(cv: CVAnalisis): Promise<Buffer> {
     page = doc.addPage([W, PH]);
     pageNum++;
     y = PH - M;
+    watermark();
   }
   function ensure(h: number) {
     if (y - h < M + 20) newPage();
@@ -131,17 +156,24 @@ async function generarPDF(cv: CVAnalisis): Promise<Buffer> {
     y -= 10;
   }
 
+  // ---- Logo institucional (franja blanca superior) ----
+  if (logo) {
+    const lh = 24;
+    const lw = lh * (logo.width / logo.height);
+    page.drawImage(logo, { x: (W - lw) / 2, y: PH - (TOPSTRIP + lh) / 2, width: lw, height: lh });
+  }
+
   // ---- Banda de encabezado ----
-  page.drawRectangle({ x: 0, y: PH - BAND, width: W, height: BAND, color: NAVY });
+  page.drawRectangle({ x: 0, y: PH - TOPSTRIP - BAND, width: W, height: BAND, color: NAVY });
   const nombre = has(cv.datos?.nombre) ? cv.datos!.nombre! : "Hoja de vida";
-  page.drawText(sanitize(nombre), { x: M, y: PH - 56, size: 24, font: HB, color: WHITE });
+  page.drawText(sanitize(nombre), { x: M, y: PH - TOPSTRIP - 56, size: 24, font: HB, color: WHITE });
   const subt = join([cv.nivel_profesional, cv.perfil_unesco?.area_principal ? `${cv.perfil_unesco.area_principal.codigo} · ${cv.perfil_unesco.area_principal.nombre}` : null]);
-  if (subt) page.drawText(sanitize(subt), { x: M, y: PH - 78, size: 11, font: HB, color: TEAL_200 });
+  if (subt) page.drawText(sanitize(subt), { x: M, y: PH - TOPSTRIP - 78, size: 11, font: HB, color: TEAL_200 });
   const contacto = join([cv.datos?.email, cv.datos?.telefono, cv.datos?.ciudad, cv.datos?.linkedin]);
   if (contacto) {
     const [primeraLinea] = wrap(contacto, H, 9, CW - 110);
     if (primeraLinea) {
-      page.drawText(primeraLinea, { x: M, y: PH - 100, size: 9, font: H, color: rgb(0.85, 0.89, 0.97) });
+      page.drawText(primeraLinea, { x: M, y: PH - TOPSTRIP - 100, size: 9, font: H, color: rgb(0.85, 0.89, 0.97) });
     }
   }
   // Foto
@@ -149,12 +181,12 @@ async function generarPDF(cv: CVAnalisis): Promise<Buffer> {
     try {
       const img: PDFImage = foto.kind === "jpg" ? await doc.embedJpg(foto.bytes) : await doc.embedPng(foto.bytes);
       const s = 86;
-      const fx = W - M - s, fy = PH - BAND + (BAND - s) / 2;
+      const fx = W - M - s, fy = PH - TOPSTRIP - BAND + (BAND - s) / 2;
       page.drawRectangle({ x: fx - 3, y: fy - 3, width: s + 6, height: s + 6, color: WHITE });
       page.drawImage(img, { x: fx, y: fy, width: s, height: s });
     } catch {}
   }
-  y = PH - BAND - 22;
+  y = PH - TOPSTRIP - BAND - 22;
 
   // ---- Bloque UNESCO ----
   const ap = cv.perfil_unesco?.area_principal;
@@ -253,6 +285,19 @@ function bulletP(text: string) {
 
 async function generarWord(cv: CVAnalisis): Promise<Buffer> {
   const children: (Paragraph | Table)[] = [];
+  const logoBytes = await loadLogo("logo-ucuenca.png");
+  const marcaBytes = await loadLogo("logo-ucuenca-marca.png");
+
+  if (logoBytes) {
+    children.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 120 },
+        children: [new ImageRun({ data: logoBytes, type: "png", transformation: { width: 165, height: 36 } } as any)],
+      })
+    );
+  }
+
   const nombre = has(cv.datos?.nombre) ? cv.datos!.nombre! : "Hoja de vida";
   const subt = join([cv.nivel_profesional, cv.perfil_unesco?.area_principal ? `${cv.perfil_unesco.area_principal.codigo} · ${cv.perfil_unesco.area_principal.nombre}` : null]);
   const contacto = join([cv.datos?.email, cv.datos?.telefono, cv.datos?.ciudad, cv.datos?.linkedin]);
@@ -375,8 +420,32 @@ async function generarWord(cv: CVAnalisis): Promise<Buffer> {
     children.push(heading("Habilidades"), new Paragraph({ children: [new TextRun({ text: cv.habilidades.join("  ·  "), size: 20, color: hex.text })] }));
   }
 
+  const headers = marcaBytes
+    ? {
+        default: new Header({
+          children: [
+            new Paragraph({
+              children: [
+                new ImageRun({
+                  data: marcaBytes,
+                  type: "png",
+                  transformation: { width: 460, height: 100 },
+                  floating: {
+                    horizontalPosition: { relative: HorizontalPositionRelativeFrom.PAGE, align: HorizontalPositionAlign.CENTER },
+                    verticalPosition: { relative: VerticalPositionRelativeFrom.PAGE, align: VerticalPositionAlign.CENTER },
+                    behindDocument: true,
+                    wrap: { type: TextWrappingType.NONE },
+                  },
+                } as any),
+              ],
+            }),
+          ],
+        }),
+      }
+    : undefined;
+
   const doc = new Document({
-    sections: [{ properties: { page: { margin: { top: 720, bottom: 720, left: 720, right: 720 } } }, children }],
+    sections: [{ properties: { page: { margin: { top: 720, bottom: 720, left: 720, right: 720 } } }, headers, children }],
   });
   return await Packer.toBuffer(doc);
 }
