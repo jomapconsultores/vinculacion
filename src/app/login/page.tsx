@@ -43,7 +43,12 @@ export default function LoginPage() {
             <input type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
           <div>
-            <label className="label">Contraseña</label>
+            <div className="flex items-center justify-between">
+              <label className="label">Contraseña</label>
+              <Link href="/recuperar" className="mb-1 text-xs font-medium text-blue-700 hover:underline">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
             <PasswordInput value={password} onChange={setPassword} required />
           </div>
           {error && <p className="rounded-lg bg-red-50 p-2 text-sm text-red-600">Credenciales inválidas o correo sin verificar.</p>}
