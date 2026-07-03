@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { PasswordInput } from "@/components/PasswordInput";
 import { HeartHandshake, Loader2, CheckCircle2, KeyRound } from "lucide-react";
 
@@ -17,8 +16,10 @@ export default function RestablecerPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => setSesionOk(!!user));
+    fetch("/api/auth/password")
+      .then((r) => r.json())
+      .then((j) => setSesionOk(!!j.authenticated))
+      .catch(() => setSesionOk(false));
   }, []);
 
   async function onSubmit(e: React.FormEvent) {
@@ -26,14 +27,23 @@ export default function RestablecerPage() {
     setError(null);
     if (password !== confirmar) return setError("Las contraseñas no coinciden.");
     setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ password });
-    setLoading(false);
-    if (error) return setError(error.message);
-    setListo(true);
-    setTimeout(() => {
-      window.location.assign("/dashboard");
-    }, 1500);
+    try {
+      const r = await fetch("/api/auth/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const j = await r.json().catch(() => ({}));
+      setLoading(false);
+      if (!r.ok) return setError(j.error || "No se pudo actualizar la contraseña.");
+      setListo(true);
+      setTimeout(() => {
+        window.location.assign("/dashboard");
+      }, 1500);
+    } catch {
+      setLoading(false);
+      setError("Sin conexión con el servidor. Intenta de nuevo.");
+    }
   }
 
   return (

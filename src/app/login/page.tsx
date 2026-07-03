@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { PasswordInput } from "@/components/PasswordInput";
 import { HeartHandshake, Loader2 } from "lucide-react";
 
@@ -16,15 +15,23 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
+    try {
+      // Login same-origin: no depende de que el navegador alcance supabase.co
+      const r = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setLoading(false);
+        return setError(j.error || "No se pudo iniciar sesión. Intenta de nuevo.");
+      }
+      window.location.assign("/dashboard");
+    } catch {
       setLoading(false);
-      return setError(error.message);
+      setError("Sin conexión con el servidor. Revisa tu internet e intenta de nuevo.");
     }
-    // Navegación completa: garantiza que la cookie de sesión llegue al servidor
-    // y el middleware reconozca la sesión (evita el rebote a /login).
-    window.location.assign("/dashboard");
   }
 
   return (

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { HeartHandshake, Loader2, MailCheck, KeyRound } from "lucide-react";
 
 export default function RecuperarPage() {
@@ -15,13 +14,19 @@ export default function RecuperarPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/restablecer`,
-    });
-    setLoading(false);
-    if (error) setError("No se pudo enviar el correo. Verifica la dirección e intenta de nuevo.");
-    else setEnviado(true);
+    try {
+      const r = await fetch("/api/auth/recuperar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      setLoading(false);
+      if (!r.ok) setError("No se pudo enviar el correo. Verifica la dirección e intenta de nuevo.");
+      else setEnviado(true);
+    } catch {
+      setLoading(false);
+      setError("Sin conexión con el servidor. Revisa tu internet e intenta de nuevo.");
+    }
   }
 
   return (

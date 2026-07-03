@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { PasswordInput } from "@/components/PasswordInput";
 import { HeartHandshake, CheckCircle2, Loader2, MailCheck, ShieldAlert, GraduationCap } from "lucide-react";
 
@@ -60,39 +59,48 @@ function RegisterForm() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const supabase = createClient();
-
-    if (rol === "estudiante") {
-      // Los estudiantes entran directo: cuenta confirmada en el servidor, sin correo.
-      const r = await fetch("/api/registro", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, cedula, rol }),
-      });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) {
+    try {
+      if (rol === "estudiante") {
+        // Los estudiantes entran directo: cuenta confirmada en el servidor, sin correo.
+        const r = await fetch("/api/registro", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, cedula, rol }),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          setLoading(false);
+          setError(j.error || "No se pudo crear la cuenta");
+          return;
+        }
+        // Iniciar sesión same-origin
+        const rl = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
         setLoading(false);
-        setError(j.error || "No se pudo crear la cuenta");
+        if (!rl.ok) {
+          const jl = await rl.json().catch(() => ({}));
+          setError(jl.error || "Cuenta creada; inicia sesión manualmente.");
+        } else window.location.assign("/dashboard");
         return;
       }
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      setLoading(false);
-      if (error) setError(error.message);
-      else window.location.assign("/dashboard");
-      return;
-    }
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-        data: { cedula, rol, empresa_nombre: empresa },
-      },
-    });
-    setLoading(false);
-    if (error) setError(error.message);
-    else setEnviado(true);
+      // Roles con verificación por correo (same-origin)
+      const r = await fetch("/api/auth/registro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, cedula, rol, empresa_nombre: empresa }),
+      });
+      const j = await r.json().catch(() => ({}));
+      setLoading(false);
+      if (!r.ok) setError(j.error || "No se pudo crear la cuenta");
+      else setEnviado(true);
+    } catch {
+      setLoading(false);
+      setError("Sin conexión con el servidor. Revisa tu internet e intenta de nuevo.");
+    }
   }
 
   if (enviado) {
