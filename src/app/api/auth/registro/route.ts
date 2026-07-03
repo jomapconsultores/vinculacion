@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { cedulaOcupada } from "@/lib/registro";
 
 const ROLES = new Set(["profesional", "empleador", "autoridad"]);
 
@@ -17,6 +18,9 @@ export async function POST(req: Request) {
   if (!rol || !ROLES.has(rol)) return NextResponse.json({ error: "Nivel inválido" }, { status: 400 });
   if (!email || !/^\S+@\S+\.\S+$/.test(email)) return NextResponse.json({ error: "Correo inválido" }, { status: 400 });
   if (!password || password.length < 6) return NextResponse.json({ error: "La contraseña debe tener al menos 6 caracteres" }, { status: 400 });
+
+  const ocupada = await cedulaOcupada(cedula);
+  if (ocupada) return NextResponse.json({ error: ocupada }, { status: 409 });
 
   const site = process.env.NEXT_PUBLIC_SITE_URL || "https://conecta.pensamiento-libre.org";
   const supabase = await createClient();

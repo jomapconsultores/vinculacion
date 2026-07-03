@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { cedulaOcupada } from "@/lib/registro";
 
 export const runtime = "nodejs";
 
@@ -26,6 +27,9 @@ export async function POST(req: Request) {
   if (!cedula || !/^\d{10}$/.test(cedula)) {
     return NextResponse.json({ error: "Cédula inválida (10 dígitos)" }, { status: 400 });
   }
+
+  const ocupada = await cedulaOcupada(cedula);
+  if (ocupada) return NextResponse.json({ error: ocupada }, { status: 409 });
 
   const admin = createAdminClient();
   const { error } = await admin.auth.admin.createUser({
