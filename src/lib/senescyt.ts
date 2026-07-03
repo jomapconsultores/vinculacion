@@ -2,8 +2,8 @@
 //
 // La consulta pública oficial (consulta-titulos-web) exige captcha, por lo que
 // no es automatizable sin convenio. Este servicio consulta el registro espejo
-// local (tabla titulos_senescyt) y deja la interfaz lista para conectar el
-// web service oficial cuando la institución firme el convenio con SENESCYT.
+// local (tabla titulos_senescyt), que combina datos de convenio y títulos
+// declarados por el propio usuario dentro del sistema.
 
 import { createAdminClient } from "@/lib/supabase/server";
 
@@ -13,21 +13,20 @@ export type TituloSenescyt = {
   tipo: string | null;
   fecha_registro: string | null;
   numero_registro: string | null;
+  area_codigo: string | null;
+  area_nombre: string | null;
   fuente: string;
 };
-
-export const SENESCYT_URL_OFICIAL =
-  "https://www.senescyt.gob.ec/consulta-titulos-web/faces/vista/consulta/consulta.xhtml";
 
 export async function consultarSenescyt(cedula: string): Promise<TituloSenescyt[]> {
   const limpia = (cedula || "").replace(/\D/g, "");
   if (limpia.length !== 10) return [];
 
-  // 1) Registro espejo local (demo / caché de convenio)
+  // 1) Registro espejo local (demo / caché de convenio / declarados por el usuario)
   const admin = createAdminClient();
   const { data } = await admin
     .from("titulos_senescyt")
-    .select("titulo, institucion, tipo, fecha_registro, numero_registro, fuente")
+    .select("titulo, institucion, tipo, fecha_registro, numero_registro, area_codigo, area_nombre, fuente")
     .eq("cedula", limpia)
     .order("fecha_registro", { ascending: true });
 

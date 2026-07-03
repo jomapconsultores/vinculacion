@@ -26,6 +26,8 @@ export async function POST() {
       institucion: t.institucion ?? "—",
       nivel: t.tipo,
       fecha_fin: t.fecha_registro,
+      area_codigo: t.area_codigo,
+      area_nombre: t.area_nombre,
     }));
 
   if (nuevos.length) {

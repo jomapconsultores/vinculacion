@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { GraduationCap, Search, Loader2, Download, ExternalLink, BadgeCheck } from "lucide-react";
+import { GraduationCap, Search, Loader2, Download, BadgeCheck, Plus, BookOpen } from "lucide-react";
+import { AREAS_UNESCO } from "@/lib/cv-types";
 
 type Titulo = {
   titulo: string;
@@ -10,15 +11,23 @@ type Titulo = {
   tipo: string | null;
   fecha_registro: string | null;
   numero_registro: string | null;
+  area_codigo: string | null;
+  area_nombre: string | null;
+  fuente?: string;
 };
+
+const FORM_INICIAL = { titulo: "", institucion: "", tipo: "Tercer nivel", area_codigo: "", fecha_registro: "", numero_registro: "" };
 
 export function SenescytPanel({ cedula }: { cedula: string | null }) {
   const router = useRouter();
   const [titulos, setTitulos] = useState<Titulo[] | null>(null);
-  const [oficial, setOficial] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [importando, setImportando] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [mostrarForm, setMostrarForm] = useState(false);
+  const [form, setForm] = useState(FORM_INICIAL);
+  const [guardando, setGuardando] = useState(false);
+  const [errorForm, setErrorForm] = useState<string | null>(null);
 
   async function consultar() {
     if (!cedula) return;
@@ -28,7 +37,7 @@ export function SenescytPanel({ cedula }: { cedula: string | null }) {
       const r = await fetch(`/api/senescyt?cedula=${cedula}`);
       const j = await r.json();
       setTitulos(j.titulos ?? []);
-      setOficial(j.verificacion_oficial ?? null);
+      setMostrarForm((j.titulos ?? []).length === 0);
     } catch {
       setMsg("No se pudo consultar. Intenta de nuevo.");
     }
@@ -48,6 +57,29 @@ export function SenescytPanel({ cedula }: { cedula: string | null }) {
       setMsg(e.message || "No se pudo importar.");
     }
     setImportando(false);
+  }
+
+  async function agregarTitulo(e: React.FormEvent) {
+    e.preventDefault();
+    setGuardando(true);
+    setErrorForm(null);
+    try {
+      const r = await fetch("/api/senescyt/agregar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "No se pudo guardar el título");
+      setForm(FORM_INICIAL);
+      setMostrarForm(false);
+      setMsg("Título agregado a tu registro y a tu educación.");
+      router.refresh();
+      await consultar();
+    } catch (e: any) {
+      setErrorForm(e.message);
+    }
+    setGuardando(false);
   }
 
   return (
@@ -71,7 +103,7 @@ export function SenescytPanel({ cedula }: { cedula: string | null }) {
         <div className="mt-4">
           {titulos.length === 0 ? (
             <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-500">
-              No se encontraron títulos para esta cédula en el registro.
+              No se encontraron títulos para esta cédula en el registro. Puedes agregarlos directamente aquí abajo.
             </p>
           ) : (
             <>
@@ -85,6 +117,11 @@ export function SenescytPanel({ cedula }: { cedula: string | null }) {
                       <p className="mt-0.5 text-xs text-slate-500">
                         {[t.institucion, t.tipo, t.fecha_registro].filter(Boolean).join(" · ")}
                       </p>
+                      {t.area_nombre && (
+                        <p className="mt-0.5 flex items-center gap-1 text-xs text-teal-700">
+                          <BookOpen className="h-3 w-3 shrink-0" /> {t.area_codigo} · {t.area_nombre}
+                        </p>
+                      )}
                       {t.numero_registro && (
                         <p className="text-xs text-slate-400">Registro: {t.numero_registro}</p>
                       )}
@@ -97,14 +134,100 @@ export function SenescytPanel({ cedula }: { cedula: string | null }) {
                   {importando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                   Agregar a mi educación
                 </button>
-                {oficial && (
-                  <a href={oficial} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-700 hover:underline">
-                    Verificar en el sitio oficial <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
+                {!mostrarForm && (
+                  <button
+                    type="button"
+                    onClick={() => setMostrarForm(true)}
+                    className="inline-flex items-center gap-1 text-sm text-blue-700 hover:underline"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> ¿Falta un título? Agrégalo aquí
+                  </button>
                 )}
               </div>
             </>
           )}
+
+          {mostrarForm && (
+            <form onSubmit={agregarTitulo} className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-slate-50/60 p-4">
+              <p className="text-sm font-medium text-slate-700">Agregar título</p>
+              <div>
+                <label className="label">Título (como consta en el registro)</label>
+                <input
+                  className="input"
+                  value={form.titulo}
+                  onChange={(e) => setForm({ ...form, titulo: e.target.value })}
+                  placeholder="Ej. INGENIERO EN SISTEMAS"
+                  required
+                />
+              </div>
+              <div>
+                <label className="label">Institución de educación superior</label>
+                <input
+                  className="input"
+                  value={form.institucion}
+                  onChange={(e) => setForm({ ...form, institucion: e.target.value })}
+                  placeholder="Ej. Universidad de Cuenca"
+                  required
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="label">Tipo</label>
+                  <select className="input" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}>
+                    <option>Tercer nivel</option>
+                    <option>Cuarto nivel</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Área de conocimiento</label>
+                  <select
+                    className="input"
+                    value={form.area_codigo}
+                    onChange={(e) => setForm({ ...form, area_codigo: e.target.value })}
+                    required
+                  >
+                    <option value="" disabled>Selecciona un área…</option>
+                    {AREAS_UNESCO.map((a) => (
+                      <option key={a.codigo} value={a.codigo}>{a.codigo} · {a.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="label">Fecha de registro (opcional)</label>
+                  <input
+                    type="date"
+                    className="input"
+                    value={form.fecha_registro}
+                    onChange={(e) => setForm({ ...form, fecha_registro: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="label">Número de registro (opcional)</label>
+                  <input
+                    className="input"
+                    value={form.numero_registro}
+                    onChange={(e) => setForm({ ...form, numero_registro: e.target.value })}
+                    placeholder="Ej. 1007-2023-2456789"
+                  />
+                </div>
+              </div>
+              {errorForm && <p className="rounded-lg bg-red-50 p-2 text-sm text-red-600">{errorForm}</p>}
+              <div className="flex gap-2">
+                <button className="btn-primary" disabled={guardando}>
+                  {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  Guardar título
+                </button>
+                {titulos.length > 0 && (
+                  <button type="button" className="btn-outline" onClick={() => setMostrarForm(false)}>
+                    Cancelar
+                  </button>
+                )}
+              </div>
+            </form>
+          )}
+
           {msg && <p className="mt-3 rounded-lg bg-teal-50 p-2 text-sm text-teal-700">{msg}</p>}
         </div>
       )}

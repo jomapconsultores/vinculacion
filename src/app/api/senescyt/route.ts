@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { consultarSenescyt, SENESCYT_URL_OFICIAL } from "@/lib/senescyt";
+import { consultarSenescyt } from "@/lib/senescyt";
 
 // Consulta de títulos por cédula (usada en el registro y en el perfil).
 export async function GET(req: Request) {
@@ -9,11 +9,7 @@ export async function GET(req: Request) {
   }
   try {
     const titulos = await consultarSenescyt(cedula);
-    return NextResponse.json({
-      encontrado: titulos.length > 0,
-      titulos,
-      verificacion_oficial: SENESCYT_URL_OFICIAL,
-    });
+    return NextResponse.json({ encontrado: titulos.length > 0, titulos });
   } catch {
     return NextResponse.json({ encontrado: false, titulos: [] });
   }
