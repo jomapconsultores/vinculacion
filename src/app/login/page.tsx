@@ -58,7 +58,7 @@ export default function LoginPage() {
             </div>
             <PasswordInput value={password} onChange={setPassword} required />
           </div>
-          {error && <p className="rounded-lg bg-red-50 p-2 text-sm text-red-600">Credenciales inválidas o correo sin verificar.</p>}
+          {error && <p className="rounded-lg bg-red-50 p-2 text-sm text-red-600">{error}</p>}
           <button className="btn-primary w-full" disabled={loading}>
             {loading && <Loader2 className="h-4 w-4 animate-spin" />} Ingresar
           </button>
