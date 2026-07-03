@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { Sidebar, type NavItem } from "@/components/Sidebar";
-import { LayoutDashboard, User, FileText, Briefcase, GraduationCap, Award, ScanText, ClipboardList } from "lucide-react";
+import { LayoutDashboard, User, FileText, Briefcase, GraduationCap, Award, ScanText, ClipboardList, ClipboardCheck } from "lucide-react";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireProfile();
@@ -16,13 +16,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
     { href: "/dashboard/perfil", label: "Mi perfil", icon: <User className="h-4 w-4" /> },
     { href: "/dashboard/analizar", label: "Analizar mi CV", icon: <ScanText className="h-4 w-4" /> },
     { href: "/dashboard/cv", label: "Mi CV", icon: <FileText className="h-4 w-4" /> },
-    // El estudiante se enfoca en su perfil y formación; el profesional además busca empleo.
-    ...(!esEstudiante
-      ? [
+    // El estudiante ve sus prácticas; el profesional además busca empleo.
+    ...(esEstudiante
+      ? [{ href: "/dashboard/practicas", label: "Mis prácticas", icon: <ClipboardCheck className="h-4 w-4" /> }]
+      : [
           { href: "/dashboard/empleos", label: "Empleos", icon: <Briefcase className="h-4 w-4" /> },
           { href: "/dashboard/competencias", label: "Competencias", icon: <Award className="h-4 w-4" /> },
-        ]
-      : []),
+        ]),
     { href: "/dashboard/cursos", label: "Educación continua", icon: <GraduationCap className="h-4 w-4" /> },
     { href: "/dashboard/encuesta", label: "Encuesta de pertinencia", icon: <ClipboardList className="h-4 w-4" /> },
   ];
