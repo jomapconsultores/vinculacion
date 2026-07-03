@@ -94,8 +94,8 @@ export async function POST(req: Request) {
  "experiencia": [{"cargo","empresa","periodo","logros":[string]}],
  "educacion": [{"titulo","institucion","periodo"}],
  "habilidades": [string],
- "capacitaciones": [{"nombre","institucion","horas":number|null,"anio":number|null,"fuente":"hoja de vida"|"certificado"}],
- "certificaciones_detectadas": [{"nombre","emisor","fecha"}],
+ "capacitaciones": [{"nombre","institucion","horas":number|null,"anio":number|null,"categoria","fuente":"hoja de vida"|"certificado"}],
+ "certificaciones_detectadas": [{"nombre","emisor","fecha","categoria"}],
  "perfil_unesco": {"area_principal": {"codigo","nombre","justificacion"}, "areas_secundarias": [{"codigo","nombre"}]},
  "nivel_profesional": string,
  "recomendaciones": [string]
@@ -104,6 +104,7 @@ Reglas:
 - Redacta el "resumen" (perfil profesional) en 3-4 frases, tono profesional, en español.
 - Reescribe la experiencia orientada a logros (viñetas).
 - "capacitaciones": combina cursos/capacitaciones detectados en la hoja de vida Y en los certificados; marca la "fuente".
+- "categoria": clasifica cada capacitación y certificación en un GRUPO TEMÁTICO breve y consistente que agrupe cursos parecidos. Usa preferentemente uno de: "Tecnología/TIC", "Administración/Finanzas", "Salud", "Educación/Docencia", "Idiomas", "Seguridad/Prevención", "Legal/Normativa", "Habilidades blandas", "Otros". Reutiliza EXACTAMENTE la misma etiqueta para cursos del mismo tema.
 - "certificaciones_detectadas": las que provengan de los certificados adjuntos.
 - "perfil_unesco": clasifica el perfil profesional según las ÁREAS AMPLIAS UNESCO/ISCED-F. Usa EXACTAMENTE uno de estos códigos y nombres para area_principal y areas_secundarias: ${areas}. Justifica brevemente la elección del área principal.
 - "nivel_profesional": p.ej. "Junior", "Semi-senior", "Senior", "Técnico", según la experiencia.

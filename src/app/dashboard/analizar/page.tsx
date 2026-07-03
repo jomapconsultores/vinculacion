@@ -3,13 +3,36 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import type { CVAnalisis } from "@/lib/cv-types";
+import type { CVAnalisis, Capacitacion } from "@/lib/cv-types";
 import {
   Upload, FileText, Award, GraduationCap, Sparkles, Loader2, FileDown,
   Briefcase, BadgeCheck, Lightbulb, Image as ImageIcon, Compass, X, UserCheck, ArrowRight,
+  CalendarDays, Layers,
 } from "lucide-react";
 
 type PerfilInfo = { experiencia: number; educacion: number; habilidades: number };
+
+// Ordena capacitaciones por año, de más reciente a más antiguo (sin año al final).
+function ordenarPorFecha(items: Capacitacion[]): Capacitacion[] {
+  return [...items].sort((a, b) => (b.anio ?? -1) - (a.anio ?? -1));
+}
+
+// Agrupa por categoría (grupos parecidos) y ordena cada grupo por fecha.
+function agruparPorTipo(items: Capacitacion[]): { categoria: string; items: Capacitacion[] }[] {
+  const mapa = new Map<string, Capacitacion[]>();
+  for (const c of items) {
+    const cat = (c.categoria && c.categoria.trim()) || "Otros";
+    if (!mapa.has(cat)) mapa.set(cat, []);
+    mapa.get(cat)!.push(c);
+  }
+  return Array.from(mapa.entries())
+    .map(([categoria, its]) => ({ categoria, items: ordenarPorFecha(its) }))
+    .sort((a, b) => {
+      if (a.categoria === "Otros") return 1;
+      if (b.categoria === "Otros") return -1;
+      return a.categoria.localeCompare(b.categoria, "es");
+    });
+}
 
 export default function AnalizarPage() {
   const [cv, setCv] = useState<File | null>(null);
@@ -20,7 +43,22 @@ export default function AnalizarPage() {
   const [error, setError] = useState<string | null>(null);
   const [analisis, setAnalisis] = useState<CVAnalisis | null>(null);
   const [perfilInfo, setPerfilInfo] = useState<PerfilInfo | null>(null);
+  const [arrastrando, setArrastrando] = useState(false);
   const cvRef = useRef<HTMLInputElement>(null);
+  const certRef = useRef<HTMLInputElement>(null);
+
+  // Agrega certificados (PDF o imágenes) evitando duplicados por nombre+tamaño.
+  function agregarCerts(files: FileList | File[] | null) {
+    const nuevos = Array.from(files ?? []).filter(
+      (f) => f.type === "application/pdf" || f.type.startsWith("image/") || /\.pdf$/i.test(f.name)
+    );
+    if (!nuevos.length) return;
+    setCerts((prev) => {
+      const clave = (f: File) => `${f.name}|${f.size}`;
+      const vistos = new Set(prev.map(clave));
+      return [...prev, ...nuevos.filter((f) => !vistos.has(clave(f)))];
+    });
+  }
 
   async function analizar(e: React.FormEvent) {
     e.preventDefault();
@@ -120,26 +158,47 @@ export default function AnalizarPage() {
         {/* Certificados */}
         <div>
           <label className="label">Certificados (opcional, varios PDF/imágenes)</label>
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
-            <Award className="h-4 w-4" /> Agregar certificados
-            <input
-              type="file"
-              accept=".pdf,image/*"
-              multiple
-              className="hidden"
-              onChange={(e) => setCerts([...certs, ...Array.from(e.target.files ?? [])])}
-            />
-          </label>
+          <div
+            onClick={() => certRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); setArrastrando(true); }}
+            onDragLeave={(e) => { e.preventDefault(); setArrastrando(false); }}
+            onDrop={(e) => { e.preventDefault(); setArrastrando(false); agregarCerts(e.dataTransfer.files); }}
+            className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed p-5 text-center transition ${
+              arrastrando ? "border-blue-500 bg-blue-50" : "border-slate-300 hover:border-blue-400"
+            }`}
+          >
+            <Award className="h-6 w-6 text-slate-400" />
+            <p className="text-sm font-medium text-slate-600">
+              Arrastra aquí tus certificados o haz clic para seleccionarlos
+            </p>
+            <p className="text-xs text-slate-400">Puedes soltar varios PDF o imágenes a la vez</p>
+          </div>
+          <input
+            ref={certRef}
+            type="file"
+            accept=".pdf,image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => { agregarCerts(e.target.files); e.target.value = ""; }}
+          />
           {certs.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {certs.map((c, i) => (
-                <span key={i} className="badge bg-slate-100 text-slate-600">
-                  {c.name}
-                  <button type="button" onClick={() => setCerts(certs.filter((_, j) => j !== i))} className="text-slate-400 hover:text-red-500">
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
+            <div className="mt-3">
+              <div className="mb-1 flex items-center justify-between">
+                <p className="text-xs text-slate-500">{certs.length} certificado(s) listo(s)</p>
+                <button type="button" onClick={() => setCerts([])} className="text-xs text-slate-400 hover:text-red-500">
+                  Quitar todos
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {certs.map((c, i) => (
+                  <span key={`${c.name}-${c.size}-${i}`} className="badge bg-slate-100 text-slate-600">
+                    {c.name}
+                    <button type="button" onClick={() => setCerts(certs.filter((_, j) => j !== i))} className="text-slate-400 hover:text-red-500">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -188,6 +247,71 @@ function Seccion({ icon, titulo, children }: { icon: React.ReactNode; titulo: st
       <h2 className="mb-3 flex items-center gap-2 font-semibold text-slate-900">{icon} {titulo}</h2>
       {children}
     </section>
+  );
+}
+
+function CapCard({ c }: { c: Capacitacion }) {
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 p-3">
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-slate-800">{c.nombre}</p>
+        <p className="text-xs text-slate-500">
+          {[c.institucion, c.horas ? `${c.horas} h` : null, c.anio].filter(Boolean).join(" · ")}
+        </p>
+      </div>
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        {c.categoria && <span className="badge bg-teal-50 text-teal-700">{c.categoria}</span>}
+        {c.fuente && <span className="badge bg-slate-100 text-slate-500">{c.fuente}</span>}
+      </div>
+    </div>
+  );
+}
+
+function CapacitacionesSeccion({ capacitaciones }: { capacitaciones: Capacitacion[] }) {
+  const [modo, setModo] = useState<"fecha" | "tipo">("fecha");
+
+  const boton = (valor: "fecha" | "tipo", icono: React.ReactNode, texto: string) => (
+    <button
+      type="button"
+      onClick={() => setModo(valor)}
+      className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition ${
+        modo === valor ? "bg-blue-600 text-white" : "text-slate-500 hover:bg-slate-100"
+      }`}
+    >
+      {icono} {texto}
+    </button>
+  );
+
+  return (
+    <Seccion icon={<GraduationCap className="h-5 w-5 text-teal-600" />} titulo="Capacitaciones detectadas">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="text-xs text-slate-400">Clasificar:</span>
+        <div className="inline-flex rounded-lg border border-slate-200 p-0.5">
+          {boton("fecha", <CalendarDays className="h-3.5 w-3.5" />, "Por fecha")}
+          {boton("tipo", <Layers className="h-3.5 w-3.5" />, "Por tipo")}
+        </div>
+      </div>
+
+      {modo === "fecha" ? (
+        <div className="space-y-2">
+          {ordenarPorFecha(capacitaciones).map((c, i) => <CapCard key={i} c={c} />)}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {agruparPorTipo(capacitaciones).map((g) => (
+            <div key={g.categoria}>
+              <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                <Layers className="h-3.5 w-3.5" /> {g.categoria}
+                <span className="text-slate-300">({g.items.length})</span>
+              </h3>
+              <div className="space-y-2">
+                {g.items.map((c, i) => <CapCard key={i} c={c} />)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Seccion>
   );
 }
 
@@ -252,24 +376,8 @@ function Resultado({
         </Seccion>
       )}
 
-      {/* Capacitaciones */}
-      {a.capacitaciones?.length > 0 && (
-        <Seccion icon={<GraduationCap className="h-5 w-5 text-teal-600" />} titulo="Capacitaciones detectadas">
-          <div className="space-y-2">
-            {a.capacitaciones.map((c, i) => (
-              <div key={i} className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 p-3">
-                <div>
-                  <p className="text-sm font-medium text-slate-800">{c.nombre}</p>
-                  <p className="text-xs text-slate-500">
-                    {[c.institucion, c.horas ? `${c.horas} h` : null, c.anio].filter(Boolean).join(" · ")}
-                  </p>
-                </div>
-                {c.fuente && <span className="badge shrink-0 bg-slate-100 text-slate-500">{c.fuente}</span>}
-              </div>
-            ))}
-          </div>
-        </Seccion>
-      )}
+      {/* Capacitaciones (clasificables por fecha o por tipo) */}
+      {a.capacitaciones?.length > 0 && <CapacitacionesSeccion capacitaciones={a.capacitaciones} />}
 
       {/* Certificaciones */}
       {a.certificaciones_detectadas?.length > 0 && (

@@ -10,6 +10,7 @@ export type Capacitacion = {
   institucion?: string | null;
   horas?: number | null;
   anio?: number | null;
+  categoria?: string | null; // grupo temático (p.ej. "Tecnología/TIC", "Idiomas")
   fuente?: string | null; // "hoja de vida" | "certificado" | ...
 };
 
@@ -17,6 +18,7 @@ export type Certificacion = {
   nombre: string;
   emisor?: string | null;
   fecha?: string | null;
+  categoria?: string | null; // grupo temático
 };
 
 export type ExperienciaItem = { cargo: string; empresa: string; periodo: string; logros: string[] };
