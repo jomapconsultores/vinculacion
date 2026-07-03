@@ -84,6 +84,8 @@ export function SenescytLive({ cedula }: { cedula: string | null }) {
         j.nombre_actualizado ? "Se colocó tu nombre en el perfil." : "",
       ].filter(Boolean);
       setMsg(partes.join(" "));
+      // Recargar para que el nombre y los títulos se reflejen en toda la página
+      setTimeout(() => window.location.reload(), 1500);
       router.refresh();
     } catch (e: any) {
       setMsg(e.message || "No se pudo importar.");

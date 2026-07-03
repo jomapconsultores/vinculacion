@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PerfilEditor } from "@/components/PerfilEditor";
 import { SenescytPanel } from "@/components/SenescytPanel";
 import { SenescytLive } from "@/components/SenescytLive";
+import { CedulaUpload } from "@/components/CedulaUpload";
 import { BadgeCheck } from "lucide-react";
 
 export default async function PerfilPage() {
@@ -48,6 +49,8 @@ export default async function PerfilPage() {
             : "Puedes completar tu nombre abajo, o consultarlo en SENESCYT para que se llene automáticamente."}
         </p>
       </section>
+
+      {!profile.origen_padron && <CedulaUpload />}
 
       <SenescytLive cedula={profile.cedula} />
 

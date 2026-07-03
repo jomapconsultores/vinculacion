@@ -1,0 +1,84 @@
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { extraerTexto } from "@/lib/extract";
+import { askJSON } from "@/lib/ai";
+
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
+type Extraido = { nombres: string; apellidos: string; cedula: string };
+
+// Sube/arrastra la cédula de ciudadanía: OCR + IA extraen nombres y apellidos,
+// verifican contra la cédula de la cuenta y completan el perfil.
+export async function POST(req: Request) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+
+  const { data: prof } = await supabase
+    .from("profiles").select("cedula, origen_padron").eq("id", user.id).maybeSingle();
+  if (prof?.origen_padron) {
+    return NextResponse.json({ error: "Tu identidad ya está verificada por el padrón; no es necesario." }, { status: 400 });
+  }
+
+  let form: FormData;
+  try {
+    form = await req.formData();
+  } catch {
+    return NextResponse.json({ error: "Formato inválido." }, { status: 400 });
+  }
+  const archivo = form.get("cedula");
+  if (!(archivo instanceof File)) {
+    return NextResponse.json({ error: "Sube una imagen o PDF de tu cédula." }, { status: 400 });
+  }
+
+  // 1) OCR
+  let texto = "";
+  try {
+    texto = (await extraerTexto(archivo)).texto;
+  } catch (e: any) {
+    return NextResponse.json({ error: "No se pudo leer la imagen. Prueba con una foto nítida." }, { status: 502 });
+  }
+  if (!texto || texto.length < 15) {
+    return NextResponse.json({ error: "La imagen no es legible. Usa una foto clara de la cédula." }, { status: 422 });
+  }
+
+  // 2) Extracción con IA
+  let d: Extraido;
+  try {
+    d = await askJSON<Extraido>(
+      `Extraes datos de una CÉDULA DE IDENTIDAD ECUATORIANA a partir de texto OCR. Devuelves SOLO JSON válido con la forma {"nombres": string, "apellidos": string, "cedula": string}.
+- "apellidos": los dos apellidos (como constan en la cédula, en MAYÚSCULAS).
+- "nombres": los nombres.
+- "cedula": el número de identificación (10 dígitos, solo números).
+- Si algún dato no aparece, usa "".`,
+      `Texto OCR de la cédula:\n${texto.slice(0, 4000)}`,
+      600
+    );
+  } catch {
+    return NextResponse.json({ error: "No se pudieron extraer los datos. Intenta con otra foto." }, { status: 502 });
+  }
+
+  const nombres = (d.nombres || "").trim();
+  const apellidos = (d.apellidos || "").trim();
+  const cedulaLeida = (d.cedula || "").replace(/\D/g, "");
+  if (!nombres && !apellidos) {
+    return NextResponse.json({ error: "No se reconocieron el nombre y apellidos en la imagen." }, { status: 422 });
+  }
+
+  // 3) Verificación contra la cédula de la cuenta
+  const coincide = !!prof?.cedula && cedulaLeida.length === 10 && cedulaLeida === prof.cedula;
+
+  // 4) Guardar en el perfil
+  const { error } = await supabase.from("profiles").update({ nombres, apellidos }).eq("id", user.id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({
+    ok: true,
+    nombres,
+    apellidos,
+    cedula_leida: cedulaLeida,
+    cedula_cuenta: prof?.cedula ?? null,
+    coincide,
+  });
+}
