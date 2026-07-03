@@ -2,6 +2,7 @@ import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PerfilEditor } from "@/components/PerfilEditor";
 import { SenescytPanel } from "@/components/SenescytPanel";
+import { SenescytLive } from "@/components/SenescytLive";
 import { BadgeCheck } from "lucide-react";
 
 export default async function PerfilPage() {
@@ -43,6 +44,8 @@ export default async function PerfilPage() {
           Los datos de identidad provienen del padrón institucional y no son editables.
         </p>
       </section>
+
+      <SenescytLive cedula={profile.cedula} />
 
       <SenescytPanel cedula={profile.cedula} />
 
