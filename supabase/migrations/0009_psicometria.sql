@@ -22,6 +22,11 @@ alter table psicometria_resultados enable row level security;
 create index if not exists idx_psico_profile on psicometria_resultados(profile_id, created_at desc);
 
 drop policy if exists psico_owner on psicometria_resultados;
+drop policy if exists psico_owner_read on psicometria_resultados;
+drop policy if exists psico_owner_insert on psicometria_resultados;
 drop policy if exists psico_staff_read on psicometria_resultados;
-create policy psico_owner on psicometria_resultados for all using (profile_id = auth.uid()) with check (profile_id = auth.uid());
+-- Sin update/delete para la persona dueña: una vez registrado, el resultado (y su alerta de
+-- riesgo psicosocial) no puede ser modificado ni borrado por quien lo rindió.
+create policy psico_owner_read on psicometria_resultados for select using (profile_id = auth.uid());
+create policy psico_owner_insert on psicometria_resultados for insert with check (profile_id = auth.uid());
 create policy psico_staff_read on psicometria_resultados for select using (is_staff());

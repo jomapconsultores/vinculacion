@@ -29,7 +29,7 @@ export default async function AdminPsicometriaPage() {
         </span>
         <h1 className="mt-2 text-2xl font-bold text-slate-900">Evaluaciones psicométricas</h1>
         <p className="mt-1 max-w-3xl text-slate-500">
-          Resultados del "Perfil Psicolaboral" que las personas usuarias completan de forma voluntaria.
+          Resultados del &quot;Perfil Psicolaboral&quot; que las personas usuarias completan de forma voluntaria.
           {conAlerta > 0 && (
             <> Hay <strong className="text-rose-700">{conAlerta}</strong> {conAlerta === 1 ? "resultado" : "resultados"} con señales de riesgo psicosocial que sugieren acompañamiento.</>
           )}

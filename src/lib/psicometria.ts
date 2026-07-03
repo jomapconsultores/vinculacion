@@ -189,6 +189,18 @@ function esRiesgo(dimension: Dimension, banda: Banda): boolean {
   return false;
 }
 
+/**
+ * Dirección de riesgo de una dimensión, para que la UI coloree las barras de forma
+ * consistente con esRiesgo(): "alto" si un puntaje alto es la señal de riesgo, "bajo" si
+ * lo es un puntaje bajo, o null si la dimensión es puramente descriptiva (rasgos de
+ * personalidad) y no debe pintarse como riesgo en ningún nivel.
+ */
+export function direccionRiesgo(dimension: Dimension): "alto" | "bajo" | null {
+  if (DIMENSIONES_RIESGO_ALTO.includes(dimension)) return "alto";
+  if (DIMENSIONES_RIESGO_BAJO.includes(dimension)) return "bajo";
+  return null;
+}
+
 /** Calcula puntuaciones, interpretación y alerta a partir de respuestas crudas 1..5. */
 export function calcularResultado(respuestas: Record<string, number>): ResultadoPsicometria {
   const porDimension = new Map<Dimension, number[]>();

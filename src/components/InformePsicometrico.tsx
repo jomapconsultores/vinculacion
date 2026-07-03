@@ -1,11 +1,13 @@
-import { etiquetaDimension, type Dimension, type PuntuacionDimension } from "@/lib/psicometria";
+import { etiquetaDimension, direccionRiesgo, type Dimension, type PuntuacionDimension } from "@/lib/psicometria";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
-// Dimensiones donde un puntaje alto es la señal de alerta (el resto, un puntaje bajo lo es).
-const RIESGO_SI_ALTO = new Set<Dimension>(["agotamiento_emocional", "cinismo", "ansiedad_estres"]);
-
-function colorBanda(banda: "bajo" | "medio" | "alto", riesgoSiAlto: boolean) {
-  const malo = riesgoSiAlto ? banda === "alto" : banda === "bajo";
+// Rasgos de personalidad (apertura, responsabilidad, extraversión, amabilidad, estabilidad
+// emocional) son puramente descriptivos: direccionRiesgo() devuelve null para ellos, así que
+// nunca se pintan en rojo/ámbar, evitando estigmatizar un puntaje "bajo" en un rasgo normal.
+function colorBanda(dimension: Dimension, banda: "bajo" | "medio" | "alto") {
+  const direccion = direccionRiesgo(dimension);
+  if (!direccion) return "bg-indigo-500";
+  const malo = direccion === "alto" ? banda === "alto" : banda === "bajo";
   if (malo) return "bg-rose-500";
   if (banda === "medio") return "bg-amber-500";
   return "bg-emerald-500";
@@ -52,7 +54,7 @@ export function InformePsicometrico({
               </div>
               <div className="mb-3 h-2.5 overflow-hidden rounded-full bg-slate-100">
                 <div
-                  className={`h-full rounded-full ${colorBanda(p.banda, RIESGO_SI_ALTO.has(dim))}`}
+                  className={`h-full rounded-full ${colorBanda(dim, p.banda)}`}
                   style={{ width: `${pct}%` }}
                 />
               </div>

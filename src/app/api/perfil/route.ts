@@ -33,7 +33,16 @@ export async function POST(req: Request) {
 
   // Actualizar datos de contacto / resumen del perfil
   if (accion === "datos") {
-    const permitido = ["telefono", "ciudad", "linkedin", "resumen_profesional", "nombres", "apellidos"];
+    const { data: actual } = await supabase
+      .from("profiles")
+      .select("origen_padron")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const permitido = ["telefono", "ciudad", "linkedin", "resumen_profesional"];
+    // El nombre solo es editable cuando NO proviene del padrón institucional (identidad verificada).
+    if (!actual?.origen_padron) permitido.push("nombres", "apellidos");
+
     const upd: Record<string, any> = {};
     for (const k of permitido) if (k in (datos || {})) upd[k] = datos[k];
     const { error } = await supabase.from("profiles").update(upd).eq("id", user.id);
