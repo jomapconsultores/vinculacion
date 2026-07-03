@@ -16,18 +16,27 @@ export function CursoCard({
   const router = useRouter();
   const [estado, setEstado] = useState(estadoInicial);
   const [loading, setLoading] = useState<null | "inscribir" | "aprobar">(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function accionar(accion: "inscribir" | "aprobar") {
     setLoading(accion);
-    const r = await fetch("/api/curso", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cursoId: curso.id, accion }),
-    });
-    setLoading(null);
-    if (r.ok) {
+    setError(null);
+    try {
+      const r = await fetch("/api/curso", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cursoId: curso.id, accion }),
+      });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        throw new Error(j.error || "No se pudo completar la acción");
+      }
       setEstado(accion === "aprobar" ? "aprobado" : "en_progreso");
       router.refresh();
+    } catch (e: any) {
+      setError(e.message || "Sin conexión. Intenta de nuevo.");
+    } finally {
+      setLoading(null);
     }
   }
 
@@ -70,6 +79,7 @@ export function CursoCard({
           <p className="flex-1 text-center text-sm font-medium text-teal-700">Competencia avalada ✓</p>
         )}
       </div>
+      {error && <p className="mt-2 rounded-lg bg-red-50 p-2 text-center text-xs text-red-600">{error}</p>}
       {estado !== "aprobado" && (
         <p className="mt-2 text-center text-[11px] text-slate-400">
           (Demo) &quot;Aprobar&quot; simula la culminación del curso y el aval institucional.

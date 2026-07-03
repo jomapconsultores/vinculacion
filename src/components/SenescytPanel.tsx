@@ -35,11 +35,12 @@ export function SenescytPanel({ cedula }: { cedula: string | null }) {
     setMsg(null);
     try {
       const r = await fetch(`/api/senescyt?cedula=${cedula}`);
+      if (!r.ok) throw new Error();
       const j = await r.json();
       setTitulos(j.titulos ?? []);
       setMostrarForm((j.titulos ?? []).length === 0);
     } catch {
-      setMsg("No se pudo consultar. Intenta de nuevo.");
+      setMsg("No se pudo consultar en este momento. Intenta de nuevo en unos minutos.");
     }
     setLoading(false);
   }

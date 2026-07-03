@@ -40,8 +40,22 @@ async function loadLogo(file: string): Promise<Uint8Array | null> {
   }
 }
 
+// Solo permitimos descargar la foto desde el almacenamiento propio de Supabase,
+// para evitar SSRF (que el servidor consulte URLs internas arbitrarias).
+function fotoPermitida(url: string): boolean {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:") return false;
+    const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const host = base ? new URL(base).host : "";
+    return u.host === host && u.pathname.includes("/storage/v1/object/");
+  } catch {
+    return false;
+  }
+}
+
 async function loadImageBytes(url?: string | null): Promise<{ bytes: Uint8Array; kind: "jpg" | "png" } | null> {
-  if (!url) return null;
+  if (!url || !fotoPermitida(url)) return null;
   try {
     const r = await fetch(url);
     if (!r.ok) return null;

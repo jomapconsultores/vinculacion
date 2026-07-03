@@ -82,7 +82,7 @@ export async function candidatosSugeridos(
 
   const [{ data: cg }, { data: profs }, { data: post }] = await Promise.all([
     supabase.from("competencias_graduado").select("profile_id, competencia_id, estado").eq("estado", "avalada").in("competencia_id", req),
-    supabase.from("profiles").select("id, nombres, apellidos, carreras(nombre)").eq("rol", "graduado"),
+    supabase.from("profiles").select("id, nombres, apellidos, carreras(nombre)").eq("rol", "profesional"),
     supabase.from("postulaciones").select("profile_id").eq("empleo_id", empleoId),
   ]);
 

@@ -17,22 +17,24 @@ export async function POST(req: Request) {
   if (!curso) return NextResponse.json({ error: "Curso no encontrado" }, { status: 404 });
 
   if (accion === "inscribir") {
-    await supabase.from("inscripciones_curso").upsert(
+    const { error } = await supabase.from("inscripciones_curso").upsert(
       { profile_id: user.id, curso_id: cursoId, estado: "en_progreso" },
       { onConflict: "profile_id,curso_id" }
     );
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ estado: "en_progreso" });
   }
 
   // aprobar
-  await supabase.from("inscripciones_curso").upsert(
+  const { error: eInsc } = await supabase.from("inscripciones_curso").upsert(
     { profile_id: user.id, curso_id: cursoId, estado: "aprobado", fecha_aprobacion: new Date().toISOString() },
     { onConflict: "profile_id,curso_id" }
   );
+  if (eInsc) return NextResponse.json({ error: eInsc.message }, { status: 500 });
 
   // Avalar la competencia asociada
   if (curso.competencia_id) {
-    await supabase.from("competencias_graduado").upsert(
+    const { error: eComp } = await supabase.from("competencias_graduado").upsert(
       {
         profile_id: user.id,
         competencia_id: curso.competencia_id,
@@ -43,6 +45,7 @@ export async function POST(req: Request) {
       },
       { onConflict: "profile_id,competencia_id" }
     );
+    if (eComp) return NextResponse.json({ error: eComp.message }, { status: 500 });
     // Asignar código de verificación del certificado (solo si aún no tiene)
     const codigo = randomBytes(6).toString("hex").toUpperCase();
     await supabase

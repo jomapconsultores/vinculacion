@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/server";
-import { askJSON } from "@/lib/ai";
+import { askJSON, aiConfigurado } from "@/lib/ai";
 
 type IAResultado = {
   score: number;
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
     };
   });
 
-  const hayIA = !!process.env.ANTHROPIC_API_KEY;
+  const hayIA = aiConfigurado();
   let resultados: Record<number, IAResultado & { fuente?: string }> = {};
   let mensaje: string | undefined;
 

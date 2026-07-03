@@ -53,12 +53,18 @@ export async function POST(req: Request) {
 
   // Retroalimentación
   if (body.comentario !== undefined || body.calificacion !== undefined) {
-    const calificacion = Math.max(1, Math.min(5, Number(body.calificacion) || 5));
-    const { error } = await admin.from("retroalimentacion_empresa").insert({
+    const fila: { postulacion_id: number; comentario: string | null; calificacion?: number } = {
       postulacion_id: postulacionId,
-      calificacion,
       comentario: body.comentario?.trim() || null,
-    });
+    };
+    if (body.calificacion !== undefined && body.calificacion !== null && body.calificacion !== "") {
+      const n = Number(body.calificacion);
+      if (!Number.isInteger(n) || n < 1 || n > 5) {
+        return NextResponse.json({ error: "La calificación debe ser un entero de 1 a 5" }, { status: 400 });
+      }
+      fila.calificacion = n;
+    }
+    const { error } = await admin.from("retroalimentacion_empresa").insert(fila);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

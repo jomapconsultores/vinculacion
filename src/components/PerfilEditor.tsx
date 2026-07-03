@@ -31,10 +31,10 @@ export function PerfilEditor({
 
   async function guardarInfo() {
     setSavingInfo(true);
-    await supabase.from("profiles").update(info).eq("id", profileId);
+    const { error } = await supabase.from("profiles").update(info).eq("id", profileId);
     setSavingInfo(false);
-    setMsg("Datos guardados");
-    setTimeout(() => setMsg(null), 2000);
+    setMsg(error ? `No se pudo guardar: ${error.message}` : "Datos guardados");
+    setTimeout(() => setMsg(null), 3000);
   }
 
   async function addExp() {
@@ -118,8 +118,8 @@ export function PerfilEditor({
               <div className="grid gap-3 sm:grid-cols-2">
                 <input className="input" placeholder="Cargo" value={e.cargo} onChange={(ev) => { const c = [...exps]; c[i] = { ...e, cargo: ev.target.value }; setExps(c); }} onBlur={() => saveExp(exps[i])} />
                 <input className="input" placeholder="Empresa" value={e.empresa} onChange={(ev) => { const c = [...exps]; c[i] = { ...e, empresa: ev.target.value }; setExps(c); }} onBlur={() => saveExp(exps[i])} />
-                <input className="input" type="month" value={e.fecha_inicio?.slice(0, 7) ?? ""} onChange={(ev) => { const c = [...exps]; c[i] = { ...e, fecha_inicio: ev.target.value + "-01" }; setExps(c); }} onBlur={() => saveExp(exps[i])} />
-                <input className="input" type="month" value={e.fecha_fin?.slice(0, 7) ?? ""} onChange={(ev) => { const c = [...exps]; c[i] = { ...e, fecha_fin: ev.target.value + "-01" }; setExps(c); }} onBlur={() => saveExp(exps[i])} />
+                <input className="input" type="month" value={e.fecha_inicio?.slice(0, 7) ?? ""} onChange={(ev) => { const c = [...exps]; c[i] = { ...e, fecha_inicio: ev.target.value ? ev.target.value + "-01" : undefined }; setExps(c); }} onBlur={() => saveExp(exps[i])} />
+                <input className="input" type="month" value={e.fecha_fin?.slice(0, 7) ?? ""} onChange={(ev) => { const c = [...exps]; c[i] = { ...e, fecha_fin: ev.target.value ? ev.target.value + "-01" : undefined }; setExps(c); }} onBlur={() => saveExp(exps[i])} />
               </div>
               <textarea className="input mt-3 min-h-[60px]" placeholder="¿Qué hiciste? Logros y responsabilidades" value={e.descripcion ?? ""} onChange={(ev) => { const c = [...exps]; c[i] = { ...e, descripcion: ev.target.value }; setExps(c); }} onBlur={() => saveExp(exps[i])} />
               <button className="btn-ghost mt-2 text-red-500" onClick={() => delExp(e.id)}><Trash2 className="h-4 w-4" /> Eliminar</button>

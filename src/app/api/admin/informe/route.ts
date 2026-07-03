@@ -56,12 +56,15 @@ export async function GET() {
   // Autorizacion (rol staff)
   const { data: perfil } = await supabase
     .from("profiles")
-    .select("rol")
+    .select("rol, aprobado")
     .eq("id", user.id)
     .maybeSingle();
 
-  const rol = (perfil as { rol?: string } | null)?.rol;
-  if (rol !== "admin" && rol !== "autoridad") {
+  const p = perfil as { rol?: string; aprobado?: boolean } | null;
+  const rol = p?.rol;
+  // admin siempre; autoridad solo si está aprobada (coincide con el gate del layout).
+  const autorizado = rol === "admin" || (rol === "autoridad" && p?.aprobado === true);
+  if (!autorizado) {
     return new Response("Acceso denegado", { status: 403 });
   }
 

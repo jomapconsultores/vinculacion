@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export default async function VerificarPage({ params }: { params: { codigo: string } }) {
   const codigo = params.codigo?.toUpperCase();
   const admin = createAdminClient();
-  const { data } = await admin
+  const { data, error } = await admin
     .from("competencias_graduado")
     .select("estado, fecha_aval, avalada_por, competencias(nombre, area), profiles(nombres, apellidos)")
     .eq("codigo_verificacion", codigo)
@@ -16,6 +16,9 @@ export default async function VerificarPage({ params }: { params: { codigo: stri
 
   const d: any = data;
   const valido = !!d;
+  // Distinguir "no existe" (código inválido) de un fallo de verificación (error de BD),
+  // para no marcar como falso un certificado que sí podría ser válido.
+  const fallo = !d && !!error;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">
@@ -28,12 +31,18 @@ export default async function VerificarPage({ params }: { params: { codigo: stri
         </div>
 
         <div className="card overflow-hidden">
-          <div className={`flex items-center gap-3 p-5 ${valido ? "bg-teal-600" : "bg-red-500"} text-white`}>
+          <div className={`flex items-center gap-3 p-5 ${valido ? "bg-teal-600" : fallo ? "bg-amber-500" : "bg-red-500"} text-white`}>
             {valido ? <BadgeCheck className="h-8 w-8" /> : <ShieldX className="h-8 w-8" />}
             <div>
-              <p className="text-lg font-bold">{valido ? "Certificado válido" : "Certificado no válido"}</p>
+              <p className="text-lg font-bold">
+                {valido ? "Certificado válido" : fallo ? "No se pudo verificar" : "Certificado no válido"}
+              </p>
               <p className="text-sm opacity-90">
-                {valido ? "Verificado por la Universidad" : "No encontramos un certificado con este código."}
+                {valido
+                  ? "Verificado por la Universidad"
+                  : fallo
+                  ? "Hubo un problema al consultar. Vuelve a intentarlo en unos minutos."
+                  : "No encontramos un certificado con este código."}
               </p>
             </div>
           </div>
