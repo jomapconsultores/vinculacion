@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { cedulaFormato, limiteExcedido, ipDe } from "@/lib/seguridad";
 
 // Vista previa del padrón por cédula (para el registro).
 // Usa service role porque el padrón está protegido por RLS.
 export async function GET(req: Request) {
-  const cedula = new URL(req.url).searchParams.get("cedula")?.trim();
-  if (!cedula || cedula.length < 10) {
+  // Límite de tasa: frena la enumeración masiva del padrón.
+  if (limiteExcedido(`padron:${ipDe(req)}`, 20, 60_000, Date.now())) {
+    return NextResponse.json({ encontrado: false, error: "Demasiadas consultas. Espera un momento." }, { status: 429 });
+  }
+
+  const cedula = new URL(req.url).searchParams.get("cedula")?.trim() ?? "";
+  if (!cedulaFormato(cedula)) {
     return NextResponse.json({ encontrado: false });
   }
   try {

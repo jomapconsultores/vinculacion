@@ -25,7 +25,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ estado: "en_progreso" });
   }
 
-  // aprobar
+  // aprobar: exige estar inscrito primero (no se puede avalar un curso no iniciado)
+  const { data: insc } = await supabase
+    .from("inscripciones_curso")
+    .select("estado")
+    .eq("profile_id", user.id)
+    .eq("curso_id", cursoId)
+    .maybeSingle();
+  if (!insc) {
+    return NextResponse.json({ error: "Debes inscribirte en el curso antes de aprobarlo." }, { status: 409 });
+  }
   const { error: eInsc } = await supabase.from("inscripciones_curso").upsert(
     { profile_id: user.id, curso_id: cursoId, estado: "aprobado", fecha_aprobacion: new Date().toISOString() },
     { onConflict: "profile_id,curso_id" }

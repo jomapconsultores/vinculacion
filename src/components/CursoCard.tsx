@@ -69,7 +69,7 @@ export function CursoCard({
             {loading === "inscribir" ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Inscribirme
           </button>
         )}
-        {estado !== "aprobado" && (
+        {estado === "en_progreso" && (
           <button className="btn-primary flex-1" onClick={() => accionar("aprobar")} disabled={!!loading}>
             {loading === "aprobar" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Award className="h-4 w-4" />}
             Aprobar y avalar
@@ -80,7 +80,7 @@ export function CursoCard({
         )}
       </div>
       {error && <p className="mt-2 rounded-lg bg-red-50 p-2 text-center text-xs text-red-600">{error}</p>}
-      {estado !== "aprobado" && (
+      {estado === "en_progreso" && (
         <p className="mt-2 text-center text-[11px] text-slate-400">
           (Demo) &quot;Aprobar&quot; simula la culminación del curso y el aval institucional.
         </p>
