@@ -12,54 +12,41 @@ end $$;
 drop trigger if exists trg_protect_profile_privileges on profiles;
 create trigger trg_protect_profile_privileges before update on profiles for each row execute function protect_profile_privileges();
 
-create or replace function es_postulante_de_mi_empresa(p_profile uuid)
-returns boolean language sql stable security definer set search_path = public as $$
-  select exists (
-    select 1 from postulaciones po
-    join empleos e on e.id = po.empleo_id
-    join profiles emp on emp.id = auth.uid()
-    where po.profile_id = p_profile
-      and emp.rol = 'empleador'
-      and emp.empresa_id is not null
-      and e.empresa_id = emp.empresa_id
-  );
-$$;
-
 drop policy if exists profiles_read_staff_emp on profiles;
 drop policy if exists profiles_read_staff on profiles;
 drop policy if exists profiles_read_emp_postulantes on profiles;
 create policy profiles_read_staff on profiles for select using (is_staff());
-create policy profiles_read_emp_postulantes on profiles for select using (es_postulante_de_mi_empresa(id));
+create policy profiles_read_emp_postulantes on profiles for select using (exists (select 1 from postulaciones po join empleos e on e.id = po.empleo_id join profiles emp on emp.id = auth.uid() where po.profile_id = profiles.id and emp.rol = 'empleador' and emp.empresa_id is not null and e.empresa_id = emp.empresa_id));
 
 drop policy if exists exp_read_staff_emp on experiencia_laboral;
 drop policy if exists exp_read_staff on experiencia_laboral;
 drop policy if exists exp_read_emp on experiencia_laboral;
 create policy exp_read_staff on experiencia_laboral for select using (is_staff());
-create policy exp_read_emp on experiencia_laboral for select using (es_postulante_de_mi_empresa(profile_id));
+create policy exp_read_emp on experiencia_laboral for select using (exists (select 1 from postulaciones po join empleos e on e.id = po.empleo_id join profiles emp on emp.id = auth.uid() where po.profile_id = experiencia_laboral.profile_id and emp.rol = 'empleador' and emp.empresa_id is not null and e.empresa_id = emp.empresa_id));
 
 drop policy if exists edu_read_staff_emp on educacion;
 drop policy if exists edu_read_staff on educacion;
 drop policy if exists edu_read_emp on educacion;
 create policy edu_read_staff on educacion for select using (is_staff());
-create policy edu_read_emp on educacion for select using (es_postulante_de_mi_empresa(profile_id));
+create policy edu_read_emp on educacion for select using (exists (select 1 from postulaciones po join empleos e on e.id = po.empleo_id join profiles emp on emp.id = auth.uid() where po.profile_id = educacion.profile_id and emp.rol = 'empleador' and emp.empresa_id is not null and e.empresa_id = emp.empresa_id));
 
 drop policy if exists hab_read_staff_emp on habilidades;
 drop policy if exists hab_read_staff on habilidades;
 drop policy if exists hab_read_emp on habilidades;
 create policy hab_read_staff on habilidades for select using (is_staff());
-create policy hab_read_emp on habilidades for select using (es_postulante_de_mi_empresa(profile_id));
+create policy hab_read_emp on habilidades for select using (exists (select 1 from postulaciones po join empleos e on e.id = po.empleo_id join profiles emp on emp.id = auth.uid() where po.profile_id = habilidades.profile_id and emp.rol = 'empleador' and emp.empresa_id is not null and e.empresa_id = emp.empresa_id));
 
 drop policy if exists compg_read_staff_emp on competencias_graduado;
 drop policy if exists compg_read_staff on competencias_graduado;
 drop policy if exists compg_read_emp on competencias_graduado;
 create policy compg_read_staff on competencias_graduado for select using (is_staff());
-create policy compg_read_emp on competencias_graduado for select using (es_postulante_de_mi_empresa(profile_id));
+create policy compg_read_emp on competencias_graduado for select using (exists (select 1 from postulaciones po join empleos e on e.id = po.empleo_id join profiles emp on emp.id = auth.uid() where po.profile_id = competencias_graduado.profile_id and emp.rol = 'empleador' and emp.empresa_id is not null and e.empresa_id = emp.empresa_id));
 
 drop policy if exists cv_read_staff_emp on cvs;
 drop policy if exists cv_read_staff on cvs;
 drop policy if exists cv_read_emp on cvs;
 create policy cv_read_staff on cvs for select using (is_staff());
-create policy cv_read_emp on cvs for select using (es_postulante_de_mi_empresa(profile_id));
+create policy cv_read_emp on cvs for select using (exists (select 1 from postulaciones po join empleos e on e.id = po.empleo_id join profiles emp on emp.id = auth.uid() where po.profile_id = cvs.profile_id and emp.rol = 'empleador' and emp.empresa_id is not null and e.empresa_id = emp.empresa_id));
 
 drop policy if exists retro_emp on retroalimentacion_empresa;
 create policy retro_emp on retroalimentacion_empresa for all
