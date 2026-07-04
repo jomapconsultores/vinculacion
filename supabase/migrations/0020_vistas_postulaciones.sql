@@ -4,7 +4,11 @@
 -- Se mueve la agregación a SQL, que transfiere un puñado de filas en vez de
 -- toda la tabla.
 
-create or replace view v_indicadores_globales as
+-- create or replace view no permite insertar una columna en medio de las
+-- existentes (solo agregar al final): postulantes_unicos va antes de
+-- contratados, así que hay que recrear la vista en vez de reemplazarla.
+drop view if exists v_indicadores_globales;
+create view v_indicadores_globales as
 select
   (select count(*) from profiles where rol='profesional') as total_graduados,
   (select count(*) from profiles where rol='profesional' and origen_padron) as graduados_verificados,
