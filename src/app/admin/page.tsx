@@ -16,6 +16,7 @@ type Indicadores = {
   graduados_verificados: number;
   empleos_activos: number;
   postulaciones_totales: number;
+  postulantes_unicos: number;
   contratados: number;
   competencias_avaladas: number;
   servicios_activos: number;
@@ -49,27 +50,21 @@ export default async function AdminPanel() {
     .select("*")
     .single();
 
-  const { data: posts } = await supabase
-    .from("postulaciones")
-    .select("profile_id");
-
   const indicadores: Indicadores = (ind as Indicadores) ?? {
     total_graduados: 0,
     graduados_verificados: 0,
     empleos_activos: 0,
     postulaciones_totales: 0,
+    postulantes_unicos: 0,
     contratados: 0,
     competencias_avaladas: 0,
     servicios_activos: 0,
   };
 
-  // Trazabilidad longitudinal: personas distintas por etapa. "Contratados"
-  // viene de v_indicadores_globales (ya en personas distintas, ver
-  // 0017_unificar_contratados.sql) para no divergir del resto del panel;
-  // "postulantes" sí se calcula aquí porque la vista no lo expone.
-  const postulantes = new Set(
-    (posts ?? []).map((p: { profile_id: string }) => p.profile_id),
-  ).size;
+  // Trazabilidad longitudinal: personas distintas por etapa, agregadas en SQL
+  // (v_indicadores_globales, ver 0020_vistas_postulaciones.sql) en vez de
+  // descargar toda la tabla de postulaciones para contarlas en JS.
+  const postulantes = indicadores.postulantes_unicos;
   const contratadosPersonas = indicadores.contratados;
 
   const embudo = [

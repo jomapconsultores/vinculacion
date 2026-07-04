@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { cedulaOcupada } from "@/lib/registro";
 import { cedulaValida, limiteExcedido, ipDe } from "@/lib/seguridad";
 
@@ -50,5 +50,14 @@ export async function POST(req: Request) {
       : error.message;
     return NextResponse.json({ error: msg }, { status: 400 });
   }
-  return NextResponse.json({ ok: true });
+
+  // Inicia sesión en el mismo request: evita que el cliente tenga que hacer
+  // un segundo round-trip a /api/auth/login justo después de crear la cuenta.
+  const supabase = await createClient();
+  const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+  if (loginError) {
+    // La cuenta ya se creó; el usuario puede iniciar sesión manualmente.
+    return NextResponse.json({ ok: true, sesionIniciada: false });
+  }
+  return NextResponse.json({ ok: true, sesionIniciada: true });
 }

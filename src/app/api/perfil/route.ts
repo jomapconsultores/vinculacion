@@ -62,15 +62,27 @@ export async function POST(req: Request) {
 
   if (accion === "actualizar") {
     if (!id) return NextResponse.json({ error: "Falta id" }, { status: 400 });
-    const { error } = await supabase.from(tabla).update(limpiar(tabla, datos)).eq("id", id).eq("profile_id", user.id);
+    const { data, error } = await supabase
+      .from(tabla)
+      .update(limpiar(tabla, datos))
+      .eq("id", id)
+      .eq("profile_id", user.id)
+      .select("id");
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!data || data.length === 0) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
     return NextResponse.json({ ok: true });
   }
 
   if (accion === "eliminar") {
     if (!id) return NextResponse.json({ error: "Falta id" }, { status: 400 });
-    const { error } = await supabase.from(tabla).delete().eq("id", id).eq("profile_id", user.id);
+    const { data, error } = await supabase
+      .from(tabla)
+      .delete()
+      .eq("id", id)
+      .eq("profile_id", user.id)
+      .select("id");
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!data || data.length === 0) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
     return NextResponse.json({ ok: true });
   }
 

@@ -82,6 +82,14 @@ export async function GET() {
     supabase.from("v_indicadores_globales").select("*").single(),
   ]);
 
+  // Un informe con ceros por una vista que falló es peor que ningún informe:
+  // se reporta el error en vez de generar un PDF "exitoso" pero incorrecto.
+  const errorVistas = carrerasRes.error || brechasRes.error || indRes.error;
+  if (errorVistas) {
+    console.error("[admin/informe] error leyendo vistas:", errorVistas.message);
+    return new Response("No se pudo generar el informe: falló la lectura de indicadores.", { status: 500 });
+  }
+
   const carreras: EmpleabilidadCarrera[] =
     (carrerasRes.data as EmpleabilidadCarrera[]) ?? [];
   const brechas: BrechaCompetencia[] =

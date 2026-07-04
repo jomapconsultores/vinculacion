@@ -8,6 +8,28 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 
 const MAX_CERTS = 6;
+const TAMANO_MAX = 10 * 1024 * 1024; // 10MB por archivo
+const TIPOS_PERMITIDOS = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  "text/csv",
+];
+
+function archivoValido(f: File): string | null {
+  if (f.size > TAMANO_MAX) return `"${f.name}" supera el tamaño máximo permitido (10MB).`;
+  const tipo = (f.type || "").toLowerCase();
+  const nombre = f.name.toLowerCase();
+  const extPermitida = /\.(pdf|jpe?g|png|webp|docx|xlsx|xls|csv)$/.test(nombre);
+  if (tipo && !TIPOS_PERMITIDOS.includes(tipo) && !extPermitida) {
+    return `"${f.name}" no es un tipo de archivo admitido (PDF, Word, Excel o imagen).`;
+  }
+  return null;
+}
 
 // Extrae fechas aproximadas de un período tipo "Ene 2022 - Dic 2024" o "2020 - Actualidad".
 function parsePeriodo(periodo?: string): { inicio: string | null; fin: string | null; actual: boolean } {
@@ -42,6 +64,11 @@ export async function POST(req: Request) {
 
   const certs = form.getAll("certificados").filter((f): f is File => f instanceof File).slice(0, MAX_CERTS);
   const foto = form.get("foto");
+
+  for (const f of [cvFile, ...certs]) {
+    const err = archivoValido(f);
+    if (err) return NextResponse.json({ error: err }, { status: 413 });
+  }
 
   // 1) Extraer texto del CV
   let cvTexto = "";
@@ -111,7 +138,12 @@ Reglas:
 - 3-5 recomendaciones accionables para mejorar la empleabilidad según un estándar de hoja de vida.
 - Si un dato no aparece, usa null o [] (no inventes datos personales).`;
 
-  const userMsg = `HOJA DE VIDA (texto OCR):\n${cvTexto.slice(0, 12000)}\n\nCERTIFICADOS:\n${certTextos.join("\n\n").slice(0, 8000) || "(ninguno)"}`;
+  const certTextoCompleto = certTextos.join("\n\n");
+  const truncado = cvTexto.length > 12000 || certTextoCompleto.length > 8000;
+  if (truncado) {
+    console.warn(`[cv/analizar] texto truncado para profile_id=${user.id}: cv=${cvTexto.length} certs=${certTextoCompleto.length}`);
+  }
+  const userMsg = `HOJA DE VIDA (texto OCR):\n${cvTexto.slice(0, 12000)}\n\nCERTIFICADOS:\n${certTextoCompleto.slice(0, 8000) || "(ninguno)"}`;
 
   let analisis: CVAnalisis;
   try {
@@ -140,8 +172,15 @@ Reglas:
     if (!prof?.linkedin && analisis.datos?.linkedin) upd.linkedin = analisis.datos.linkedin;
     if (Object.keys(upd).length) await supabase.from("profiles").update(upd).eq("id", user.id);
 
+    // Las 3 lecturas de "ya existentes" son independientes entre sí (tablas
+    // distintas, mismo profile_id): se piden en paralelo en vez de en serie.
+    const [{ data: exExp }, { data: exEdu }, { data: exHab }] = await Promise.all([
+      supabase.from("experiencia_laboral").select("empresa, cargo").eq("profile_id", user.id),
+      supabase.from("educacion").select("titulo, institucion").eq("profile_id", user.id),
+      supabase.from("habilidades").select("nombre").eq("profile_id", user.id),
+    ]);
+
     // Experiencia laboral (dedup por empresa+cargo)
-    const { data: exExp } = await supabase.from("experiencia_laboral").select("empresa, cargo").eq("profile_id", user.id);
     const setExp = new Set((exExp ?? []).map((e: any) => `${norm(e.empresa)}|${norm(e.cargo)}`));
     const nuevasExp = (analisis.experiencia ?? [])
       .filter((e) => (e.cargo || e.empresa) && !setExp.has(`${norm(e.empresa)}|${norm(e.cargo)}`))
@@ -163,7 +202,6 @@ Reglas:
     }
 
     // Educación (dedup por titulo+institucion)
-    const { data: exEdu } = await supabase.from("educacion").select("titulo, institucion").eq("profile_id", user.id);
     const setEdu = new Set((exEdu ?? []).map((e: any) => `${norm(e.titulo)}|${norm(e.institucion)}`));
     const nuevasEdu = (analisis.educacion ?? [])
       .filter((e) => (e.titulo || e.institucion) && !setEdu.has(`${norm(e.titulo)}|${norm(e.institucion)}`))
@@ -183,7 +221,6 @@ Reglas:
     }
 
     // Habilidades (dedup por nombre)
-    const { data: exHab } = await supabase.from("habilidades").select("nombre").eq("profile_id", user.id);
     const setHab = new Set((exHab ?? []).map((h: any) => norm(h.nombre)));
     const nuevasHab = (analisis.habilidades ?? [])
       .filter((h) => h && !setHab.has(norm(h)))
@@ -196,5 +233,5 @@ Reglas:
     // no bloquear la respuesta por errores de guardado
   }
 
-  return NextResponse.json({ analisis, perfil_actualizado });
+  return NextResponse.json({ analisis, perfil_actualizado, truncado });
 }

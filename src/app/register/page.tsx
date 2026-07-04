@@ -61,29 +61,21 @@ function RegisterForm() {
     setLoading(true);
     try {
       if (rol === "estudiante") {
-        // Los estudiantes entran directo: cuenta confirmada en el servidor, sin correo.
+        // Los estudiantes entran directo: cuenta confirmada y sesión
+        // iniciada en el mismo request del servidor, sin correo.
         const r = await fetch("/api/registro", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password, cedula, rol }),
         });
         const j = await r.json().catch(() => ({}));
+        setLoading(false);
         if (!r.ok) {
-          setLoading(false);
           setError(j.error || "No se pudo crear la cuenta");
           return;
         }
-        // Iniciar sesión same-origin
-        const rl = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        });
-        setLoading(false);
-        if (!rl.ok) {
-          const jl = await rl.json().catch(() => ({}));
-          setError(jl.error || "Cuenta creada; inicia sesión manualmente.");
-        } else window.location.assign("/dashboard");
+        if (j.sesionIniciada) window.location.assign("/dashboard");
+        else setError("Cuenta creada; inicia sesión manualmente.");
         return;
       }
 

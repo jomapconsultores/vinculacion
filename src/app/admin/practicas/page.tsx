@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { GraduationCap, AlertTriangle } from "lucide-react";
+import { GraduationCap, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
+import { estiloEstadoPractica, etiquetaEstadoPractica, porcentajeCumplimiento } from "@/lib/estadoPractica";
 
 type Practica = {
   id: number;
@@ -11,32 +13,35 @@ type Practica = {
   servicios: { nombre: string } | null;
 };
 
-const estadoChip = (estado: string | null) => {
-  const e = (estado ?? "").toLowerCase();
-  if (e === "finalizada" || e === "aprobada") return "bg-emerald-50 text-emerald-700";
-  if (e === "en_curso") return "bg-blue-50 text-blue-700";
-  if (e === "suspendida" || e === "reprobada") return "bg-rose-50 text-rose-700";
-  return "bg-slate-100 text-slate-600";
-};
+const PAGE_SIZE = 25;
 
-const estadoLabel = (estado: string | null) =>
-  (estado ?? "sin estado").replace(/_/g, " ");
-
-export default async function PracticasPage() {
+export default async function PracticasPage({ searchParams }: { searchParams: { page?: string } }) {
   const supabase = await createClient();
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  const desde = (page - 1) * PAGE_SIZE;
 
-  const { data, error } = await supabase
-    .from("practicas_preprofesionales")
-    .select("id, estudiante_nombre, tutor, horas_planificadas, horas_cumplidas, estado, servicios(nombre)")
-    .order("estudiante_nombre", { ascending: true });
+  // Los agregados globales (horas totales, % de avance) se calculan sobre
+  // TODAS las prácticas con una consulta angosta separada, para poder paginar
+  // la tabla detallada sin que el resumen quede sesgado a la página actual.
+  const [{ data, error, count }, { data: agregados }] = await Promise.all([
+    supabase
+      .from("practicas_preprofesionales")
+      .select("id, estudiante_nombre, tutor, horas_planificadas, horas_cumplidas, estado, servicios(nombre)", { count: "exact" })
+      .order("estudiante_nombre", { ascending: true })
+      .range(desde, desde + PAGE_SIZE - 1),
+    supabase.from("practicas_preprofesionales").select("horas_planificadas, horas_cumplidas, estado"),
+  ]);
   if (error) console.error("[admin/practicas] practicas_preprofesionales:", error.message);
 
   const practicas: Practica[] = (data as unknown as Practica[]) ?? [];
+  const todas = agregados ?? [];
+  const totalRegistros = count ?? 0;
+  const totalPaginas = Math.max(1, Math.ceil(totalRegistros / PAGE_SIZE));
 
-  const totalPlan = practicas.reduce((s, p) => s + Number(p.horas_planificadas), 0);
-  const totalCumpl = practicas.reduce((s, p) => s + Number(p.horas_cumplidas), 0);
+  const totalPlan = todas.reduce((s, p) => s + Number(p.horas_planificadas), 0);
+  const totalCumpl = todas.reduce((s, p) => s + Number(p.horas_cumplidas), 0);
   const avanceGlobal = totalPlan > 0 ? Math.round((totalCumpl / totalPlan) * 100) : 0;
-  const finalizadas = practicas.filter(
+  const finalizadas = todas.filter(
     (p) => (p.estado ?? "").toLowerCase() === "finalizada",
   ).length;
 
@@ -56,7 +61,7 @@ export default async function PracticasPage() {
       {/* Resumen */}
       <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <div className="card p-5">
-          <p className="text-3xl font-bold text-slate-900">{practicas.length}</p>
+          <p className="text-3xl font-bold text-slate-900">{totalRegistros}</p>
           <p className="mt-1 text-sm text-slate-500">Prácticas activas</p>
         </div>
         <div className="card p-5">
@@ -110,7 +115,7 @@ export default async function PracticasPage() {
                 {practicas.map((p) => {
                   const plan = Number(p.horas_planificadas);
                   const cumpl = Number(p.horas_cumplidas);
-                  const pct = plan > 0 ? Math.round((cumpl / plan) * 100) : 0;
+                  const pct = porcentajeCumplimiento(cumpl, plan);
                   const completa = pct >= 100;
                   return (
                     <tr key={p.id} className="border-b border-slate-100 last:border-0">
@@ -126,7 +131,7 @@ export default async function PracticasPage() {
                           <div className="h-2 w-28 overflow-hidden rounded-full bg-slate-100">
                             <div
                               className={`h-full rounded-full ${completa ? "bg-emerald-500" : "bg-blue-600"}`}
-                              style={{ width: `${Math.min(pct, 100)}%` }}
+                              style={{ width: `${pct}%` }}
                             />
                           </div>
                           <span className="whitespace-nowrap text-xs text-slate-500">
@@ -135,8 +140,8 @@ export default async function PracticasPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`badge capitalize ${estadoChip(p.estado)}`}>
-                          {estadoLabel(p.estado)}
+                        <span className={`badge capitalize ${estiloEstadoPractica(p.estado)}`}>
+                          {etiquetaEstadoPractica(p.estado)}
                         </span>
                       </td>
                     </tr>
@@ -145,6 +150,27 @@ export default async function PracticasPage() {
               </tbody>
             </table>
           </div>
+          {totalPaginas > 1 && (
+            <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-sm text-slate-500">
+              <span>Página {page} de {totalPaginas} · {totalRegistros} registros</span>
+              <div className="flex gap-2">
+                <Link
+                  href={`?page=${page - 1}`}
+                  aria-disabled={page <= 1}
+                  className={`btn-outline ${page <= 1 ? "pointer-events-none opacity-40" : ""}`}
+                >
+                  <ChevronLeft className="h-4 w-4" /> Anterior
+                </Link>
+                <Link
+                  href={`?page=${page + 1}`}
+                  aria-disabled={page >= totalPaginas}
+                  className={`btn-outline ${page >= totalPaginas ? "pointer-events-none opacity-40" : ""}`}
+                >
+                  Siguiente <ChevronRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

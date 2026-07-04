@@ -80,9 +80,8 @@ export async function candidatosSugeridos(
   const req = ((empleo as any)?.empleo_competencias ?? []).filter((x: any) => x.requerida).map((x: any) => x.competencia_id);
   if (req.length === 0) return [];
 
-  const [{ data: cg }, { data: profs }, { data: post }] = await Promise.all([
-    supabase.from("competencias_graduado").select("profile_id, competencia_id, estado").eq("estado", "avalada").in("competencia_id", req),
-    supabase.from("profiles").select("id, nombres, apellidos, carreras(nombre)").eq("rol", "profesional"),
+  const [{ data: cg }, { data: post }] = await Promise.all([
+    supabase.from("competencias_graduado").select("profile_id, competencia_id").eq("estado", "avalada").in("competencia_id", req),
     supabase.from("postulaciones").select("profile_id").eq("empleo_id", empleoId),
   ]);
 
@@ -93,9 +92,19 @@ export async function candidatosSugeridos(
     porGraduado.get(r.profile_id)!.add(r.competencia_id);
   });
 
+  // Parte de las competencias avaladas (ya filtradas) para saber a quién le
+  // interesa la vacante, en vez de traer TODA la tabla de profesionales y
+  // descartar la mayoría en JS.
+  const idsRelevantes = [...porGraduado.keys()].filter((id) => !yaPostularon.has(id));
+  if (idsRelevantes.length === 0) return [];
+
+  const { data: profs } = await supabase
+    .from("profiles")
+    .select("id, nombres, apellidos, carreras(nombre)")
+    .in("id", idsRelevantes);
+
   const res: CandidatoSugerido[] = [];
   for (const p of (profs ?? []) as any[]) {
-    if (yaPostularon.has(p.id)) continue;
     const tiene = porGraduado.get(p.id);
     if (!tiene || tiene.size === 0) continue;
     const cubiertas = req.filter((c: number) => tiene.has(c)).length;

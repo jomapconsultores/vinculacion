@@ -1,23 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FolderLock, Upload, Loader2, FileText, Download, Trash2, AlertTriangle, ShieldCheck } from "lucide-react";
-import { DOCUMENTOS_CATEGORIAS, categoriaLabel, type DocumentoCategoria } from "@/lib/documentos";
-
-type Documento = {
-  id: number;
-  categoria: string;
-  nombre_original: string;
-  mime_type: string | null;
-  tamano_bytes: number | null;
-  created_at: string;
-};
-
-function tamanoLegible(bytes: number | null) {
-  if (!bytes) return "";
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
+import { FolderLock, Upload, Loader2, AlertTriangle, ShieldCheck } from "lucide-react";
+import { DOCUMENTOS_CATEGORIAS, type DocumentoCategoria } from "@/lib/documentos";
+import { DocumentoItem, type Documento } from "@/components/DocumentoItem";
 
 export function DocumentosPersonales() {
   const [docs, setDocs] = useState<Documento[]>([]);
@@ -52,7 +38,9 @@ export function DocumentosPersonales() {
       const r = await fetch("/api/documentos", { method: "POST", body: fd });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "No se pudo subir el archivo.");
-      await cargar();
+      // Usa el documento recién creado que ya devuelve el POST, en vez de
+      // volver a pedir la lista completa.
+      if (j.documento) setDocs((prev) => [j.documento as Documento, ...prev]);
     } catch (e: any) {
       setError(e.message);
     }
@@ -130,36 +118,7 @@ export function DocumentosPersonales() {
           <p className="text-sm text-slate-400">Todavía no has subido ningún documento.</p>
         ) : (
           docs.map((d) => (
-            <div key={d.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 p-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <FileText className="h-5 w-5 shrink-0 text-slate-400" />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-slate-800">{d.nombre_original}</p>
-                  <p className="text-xs text-slate-400">
-                    {categoriaLabel(d.categoria)} · {tamanoLegible(d.tamano_bytes)} ·{" "}
-                    {new Date(d.created_at).toLocaleDateString("es-EC")}
-                  </p>
-                </div>
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => descargar(d)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
-                  aria-label="Descargar"
-                >
-                  <Download className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => eliminar(d)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 hover:bg-red-50"
-                  aria-label="Eliminar"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
+            <DocumentoItem key={d.id} doc={d} onDescargar={descargar} onEliminar={eliminar} />
           ))
         )}
       </div>

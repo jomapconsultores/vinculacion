@@ -183,12 +183,6 @@ export function respuestasCompletas(respuestas: unknown): respuestas is Record<s
   });
 }
 
-function esRiesgo(dimension: Dimension, banda: Banda): boolean {
-  if (DIMENSIONES_RIESGO_ALTO.includes(dimension)) return banda === "alto";
-  if (DIMENSIONES_RIESGO_BAJO.includes(dimension)) return banda === "bajo";
-  return false;
-}
-
 /**
  * Dirección de riesgo de una dimensión, para que la UI coloree las barras de forma
  * consistente con esRiesgo(): "alto" si un puntaje alto es la señal de riesgo, "bajo" si
@@ -199,6 +193,11 @@ export function direccionRiesgo(dimension: Dimension): "alto" | "bajo" | null {
   if (DIMENSIONES_RIESGO_ALTO.includes(dimension)) return "alto";
   if (DIMENSIONES_RIESGO_BAJO.includes(dimension)) return "bajo";
   return null;
+}
+
+// Deriva de direccionRiesgo() en vez de repetir la misma tabla de decisión.
+function esRiesgo(dimension: Dimension, banda: Banda): boolean {
+  return direccionRiesgo(dimension) === banda;
 }
 
 /** Calcula puntuaciones, interpretación y alerta a partir de respuestas crudas 1..5. */

@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { HeartHandshake, AlertTriangle, CheckCircle2, TrendingDown, TrendingUp } from "lucide-react";
+import { HeartHandshake, AlertTriangle, CheckCircle2, TrendingDown, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 
 type ServicioEjecucion = {
   id: number;
@@ -46,20 +47,34 @@ const estilos: Record<
   },
 };
 
-export default async function ServiciosPage() {
-  const supabase = await createClient();
+const PAGE_SIZE = 25;
 
-  const { data, error } = await supabase
-    .from("v_servicio_ejecucion")
-    .select("*")
-    .order("porcentaje_ejecucion", { ascending: true });
+export default async function ServiciosPage({ searchParams }: { searchParams: { page?: string } }) {
+  const supabase = await createClient();
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  const desde = (page - 1) * PAGE_SIZE;
+
+  // El resumen global se calcula sobre TODOS los servicios con una consulta
+  // angosta separada, para poder paginar la lista detallada sin sesgar el
+  // resumen a la página actual.
+  const [{ data, error, count }, { data: agregados }] = await Promise.all([
+    supabase
+      .from("v_servicio_ejecucion")
+      .select("*", { count: "exact" })
+      .order("porcentaje_ejecucion", { ascending: true })
+      .range(desde, desde + PAGE_SIZE - 1),
+    supabase.from("v_servicio_ejecucion").select("horas_planificadas, horas_reales, porcentaje_ejecucion"),
+  ]);
   if (error) console.error("[admin/servicios] v_servicio_ejecucion:", error.message);
 
   const servicios: ServicioEjecucion[] = (data as ServicioEjecucion[]) ?? [];
+  const todos = agregados ?? [];
+  const totalRegistros = count ?? 0;
+  const totalPaginas = Math.max(1, Math.ceil(totalRegistros / PAGE_SIZE));
 
-  const totalPlan = servicios.reduce((s, x) => s + Number(x.horas_planificadas), 0);
-  const totalReal = servicios.reduce((s, x) => s + Number(x.horas_reales), 0);
-  const conDesviacion = servicios.filter((x) => clasificar(x.porcentaje_ejecucion) !== "rango").length;
+  const totalPlan = todos.reduce((s, x) => s + Number(x.horas_planificadas), 0);
+  const totalReal = todos.reduce((s, x) => s + Number(x.horas_reales), 0);
+  const conDesviacion = todos.filter((x) => clasificar(x.porcentaje_ejecucion) !== "rango").length;
   const ejecucionGlobal = totalPlan > 0 ? Math.round((totalReal / totalPlan) * 100) : 0;
 
   return (
@@ -80,7 +95,7 @@ export default async function ServiciosPage() {
       {/* Resumen */}
       <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <div className="card p-5">
-          <p className="text-3xl font-bold text-slate-900">{servicios.length}</p>
+          <p className="text-3xl font-bold text-slate-900">{totalRegistros}</p>
           <p className="mt-1 text-sm text-slate-500">Servicios monitoreados</p>
         </div>
         <div className="card p-5">
@@ -178,6 +193,28 @@ export default async function ServiciosPage() {
             );
           })}
         </section>
+      )}
+
+      {totalPaginas > 1 && (
+        <div className="card flex items-center justify-between px-4 py-3 text-sm text-slate-500">
+          <span>Página {page} de {totalPaginas} · {totalRegistros} servicios</span>
+          <div className="flex gap-2">
+            <Link
+              href={`?page=${page - 1}`}
+              aria-disabled={page <= 1}
+              className={`btn-outline ${page <= 1 ? "pointer-events-none opacity-40" : ""}`}
+            >
+              <ChevronLeft className="h-4 w-4" /> Anterior
+            </Link>
+            <Link
+              href={`?page=${page + 1}`}
+              aria-disabled={page >= totalPaginas}
+              className={`btn-outline ${page >= totalPaginas ? "pointer-events-none opacity-40" : ""}`}
+            >
+              Siguiente <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
       )}
 
       {conDesviacion > 0 && (

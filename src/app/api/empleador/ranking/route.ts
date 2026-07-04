@@ -31,12 +31,16 @@ export async function POST(req: Request) {
   const admin = createAdminClient();
 
   // Empleo + competencias requeridas — validar propiedad
-  const { data: empleo } = await admin
+  const { data: empleo, error: eEmpleo } = await admin
     .from("empleos")
     .select("id, empresa_id, titulo, descripcion, empleo_competencias(competencias(nombre))")
     .eq("id", empleoId)
     .maybeSingle();
 
+  if (eEmpleo) {
+    console.error("[ranking] error leyendo empleo:", eEmpleo.message);
+    return NextResponse.json({ error: "No se pudo leer la oferta" }, { status: 500 });
+  }
   if (!empleo) {
     return NextResponse.json({ error: "Oferta no encontrada" }, { status: 404 });
   }
@@ -49,7 +53,7 @@ export async function POST(req: Request) {
     .filter(Boolean);
 
   // Postulantes + perfil completo
-  const { data: postulaciones } = await admin
+  const { data: postulaciones, error: ePost } = await admin
     .from("postulaciones")
     .select(
       `id, profile_id, match_score, ia_analisis,
@@ -62,6 +66,11 @@ export async function POST(req: Request) {
     )
     .eq("empleo_id", empleoId);
 
+  if (ePost) {
+    console.error("[ranking] error leyendo postulaciones:", ePost.message);
+    return NextResponse.json({ error: "No se pudieron leer los postulantes" }, { status: 500 });
+  }
+
   const lista = (postulaciones ?? []) as any[];
   if (lista.length === 0) {
     return NextResponse.json({ ranking: [], mensaje: "No hay postulantes para rankear." });
@@ -73,12 +82,21 @@ export async function POST(req: Request) {
     const comps: string[] = (pr.competencias_graduado ?? [])
       .map((c: any) => c.competencias?.nombre)
       .filter(Boolean);
+    // Solo las avaladas por la universidad cuentan para el ranking heurístico
+    // (sin IA): la misma política que ya aplican postular() y
+    // candidatosSugeridos(). Las autodeclaradas sí se envían a la IA como
+    // contexto (`competencias`), pero no "cuentan" por sí solas en el fallback.
+    const compsAvaladas: string[] = (pr.competencias_graduado ?? [])
+      .filter((c: any) => c.estado === "avalada")
+      .map((c: any) => c.competencias?.nombre)
+      .filter(Boolean);
     return {
       postulacion_id: p.id,
       nombre: `${pr.nombres ?? ""} ${pr.apellidos ?? ""}`.trim(),
       titulo: pr.titulo ?? null,
       resumen: pr.resumen_profesional ?? null,
       competencias: comps,
+      competenciasAvaladas: compsAvaladas,
       experiencia: (pr.experiencia_laboral ?? []).map((x: any) => ({
         cargo: x.cargo,
         empresa: x.empresa,
@@ -163,24 +181,26 @@ export async function POST(req: Request) {
     mensaje = "IA no configurada, ranking heurístico";
   }
 
-  // Fallback heurístico para candidatos sin resultado de IA
+  // Fallback heurístico para candidatos sin resultado de IA. Solo cuentan las
+  // competencias avaladas por la universidad (misma política que postular()
+  // y candidatosSugeridos()); una competencia autodeclarada no basta.
   for (const c of candidatos) {
     if (resultados[c.postulacion_id]) continue;
-    const setCand = new Set(c.competencias.map((x) => x.toLowerCase()));
+    const setCand = new Set(c.competenciasAvaladas.map((x) => x.toLowerCase()));
     const coinciden = requeridas.filter((r) => setCand.has(r.toLowerCase()));
     const faltan = requeridas.filter((r) => !setCand.has(r.toLowerCase()));
     const score = requeridas.length
       ? Math.round((coinciden.length / requeridas.length) * 100)
-      : Math.min(100, c.competencias.length * 10);
+      : Math.min(100, c.competenciasAvaladas.length * 10);
     resultados[c.postulacion_id] = {
       score,
       fortalezas: coinciden.length
         ? [`Cumple: ${coinciden.join(", ")}`]
-        : c.competencias.slice(0, 3).map((x) => x),
+        : c.competenciasAvaladas.slice(0, 3).map((x) => x),
       brechas: faltan.map((f) => `Falta: ${f}`),
       recomendacion:
         score >= 70
-          ? "Buen ajuste según competencias declaradas."
+          ? "Buen ajuste según competencias avaladas."
           : score >= 40
           ? "Ajuste parcial; considerar entrevista."
           : "Bajo ajuste con el perfil requerido.",

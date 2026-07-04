@@ -15,12 +15,19 @@ export default async function PersonaDetalle({ params }: { params: { id: string 
   await requireProfile();
   const supabase = await createClient();
 
-  const { data: persona } = await supabase
-    .from("profiles")
-    .select("id, nombres, apellidos, cedula, email, telefono, ciudad, titulo, origen_padron, carreras(nombre)")
-    .eq("id", params.id)
-    .eq("rol", "profesional")
-    .maybeSingle();
+  const [{ data: persona }, { data: documentos }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, nombres, apellidos, cedula, email, telefono, ciudad, titulo, origen_padron, carreras(nombre)")
+      .eq("id", params.id)
+      .eq("rol", "profesional")
+      .maybeSingle(),
+    supabase
+      .from("documentos_personales")
+      .select("id, categoria, nombre_original, mime_type, tamano_bytes, created_at")
+      .eq("profile_id", params.id)
+      .order("created_at", { ascending: false }),
+  ]);
 
   if (!persona) notFound();
   const p = persona as any;
@@ -52,7 +59,7 @@ export default async function PersonaDetalle({ params }: { params: { id: string 
         </div>
       </section>
 
-      <DocumentosAdminView profileId={p.id} />
+      <DocumentosAdminView documentos={documentos ?? []} />
     </div>
   );
 }

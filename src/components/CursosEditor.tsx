@@ -27,8 +27,10 @@ export function CursosEditor({ cursos }: { cursos: Curso[] }) {
   }
 
   async function add() {
-    const j = await api({ accion: "crear", tabla: "cursos_persona", datos: { nombre: "", fuente: "manual" } });
-    if (j.fila) setItems([...items, j.fila as Curso]);
+    await guardar(async () => {
+      const j = await api({ accion: "crear", tabla: "cursos_persona", datos: { nombre: "", fuente: "manual" } });
+      if (j.fila) setItems([...items, j.fila as Curso]);
+    });
   }
   function save(c: Curso) {
     if (!c.id) return;

@@ -22,6 +22,7 @@ export type ResultadoAdmin = {
 
 export function ListaPsicometria({ resultados }: { resultados: ResultadoAdmin[] }) {
   const [abierto, setAbierto] = useState<number | null>(null);
+  const [soloAlerta, setSoloAlerta] = useState(false);
 
   if (resultados.length === 0) {
     return (
@@ -31,9 +32,29 @@ export function ListaPsicometria({ resultados }: { resultados: ResultadoAdmin[] 
     );
   }
 
+  // Los casos con alerta van primero (son los que requieren atención), y el
+  // filtro permite enfocarse solo en ellos cuando la lista crece.
+  const ordenados = [...resultados].sort((a, b) => Number(b.alerta) - Number(a.alerta));
+  const visibles = soloAlerta ? ordenados.filter((r) => r.alerta) : ordenados;
+  const conAlerta = resultados.filter((r) => r.alerta).length;
+
   return (
     <div className="space-y-3">
-      {resultados.map((r) => {
+      <label className="flex w-fit items-center gap-2 text-sm text-slate-600">
+        <input
+          type="checkbox"
+          checked={soloAlerta}
+          onChange={(e) => setSoloAlerta(e.target.checked)}
+          className="h-4 w-4 rounded border-slate-300"
+        />
+        Mostrar solo con alerta ({conAlerta})
+      </label>
+
+      {visibles.length === 0 && (
+        <div className="card p-6 text-sm text-slate-400">No hay resultados con alerta.</div>
+      )}
+
+      {visibles.map((r) => {
         const nombre = [r.profiles?.nombres, r.profiles?.apellidos].filter(Boolean).join(" ") || "Persona sin nombre registrado";
         const expandido = abierto === r.id;
         return (

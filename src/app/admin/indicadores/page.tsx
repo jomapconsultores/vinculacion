@@ -22,9 +22,9 @@ const ESTADOS: { key: string; label: string; color: string }[] = [
 export default async function IndicadoresPage() {
   const supabase = await createClient();
 
-  const [{ data: ind }, { data: posts }, { data: serv }] = await Promise.all([
+  const [{ data: ind }, { data: dist }, { data: serv }] = await Promise.all([
     supabase.from("v_indicadores_globales").select("*").single(),
-    supabase.from("postulaciones").select("estado"),
+    supabase.from("v_postulaciones_por_estado").select("estado, cantidad"),
     supabase.from("v_servicio_ejecucion").select("porcentaje_ejecucion"),
   ]);
 
@@ -35,11 +35,16 @@ export default async function IndicadoresPage() {
     postulaciones_totales: 0,
   };
 
-  const postulaciones = (posts as { estado: string }[]) ?? [];
-  const totalPost = postulaciones.length;
+  // Distribución por estado ya agregada en SQL (v_postulaciones_por_estado,
+  // ver 0020_vistas_postulaciones.sql) en vez de traer una fila por
+  // postulación y contarlas en JS.
+  const cantidadPorEstado = new Map(
+    ((dist as { estado: string; cantidad: number }[]) ?? []).map((d) => [d.estado, d.cantidad]),
+  );
+  const totalPost = [...cantidadPorEstado.values()].reduce((a, n) => a + n, 0);
   const distribucion = ESTADOS.map((e) => ({
     ...e,
-    n: postulaciones.filter((p) => p.estado === e.key).length,
+    n: cantidadPorEstado.get(e.key) ?? 0,
   }));
 
   const servicios = (serv as ServicioEjecucion[]) ?? [];

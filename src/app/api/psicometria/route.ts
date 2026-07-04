@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { calcularResultado, respuestasCompletas } from "@/lib/psicometria";
+import { limiteExcedido } from "@/lib/seguridad";
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -8,6 +9,15 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+
+  // Cooldown por persona: evita reenvíos/duplicados accidentales (doble
+  // clic, reintentos de red) sin impedir que alguien la repita más adelante.
+  if (limiteExcedido(`psicometria:${user.id}`, 3, 5 * 60_000, Date.now())) {
+    return NextResponse.json(
+      { error: "Ya registraste varios intentos recientes. Espera unos minutos antes de volver a enviar." },
+      { status: 429 }
+    );
+  }
 
   const body = (await req.json().catch(() => null)) as { respuestas?: unknown } | null;
   const respuestas = body?.respuestas;

@@ -36,13 +36,12 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 
   const { data: doc, error } = await supabase
     .from("documentos_personales")
-    .select("storage_path")
+    .delete()
     .eq("id", params.id)
+    .select("storage_path")
     .maybeSingle();
-  if (error || !doc) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
-
-  const { error: delErr } = await supabase.from("documentos_personales").delete().eq("id", params.id);
-  if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!doc) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
   await supabase.storage.from(DOCUMENTOS_BUCKET).remove([doc.storage_path]);
   return NextResponse.json({ ok: true });

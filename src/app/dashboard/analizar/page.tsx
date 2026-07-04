@@ -7,7 +7,7 @@ import type { CVAnalisis, Capacitacion } from "@/lib/cv-types";
 import {
   Upload, FileText, Award, GraduationCap, Sparkles, Loader2, FileDown,
   Briefcase, BadgeCheck, Lightbulb, Image as ImageIcon, Compass, X, UserCheck, ArrowRight,
-  CalendarDays, Layers,
+  CalendarDays, Layers, AlertTriangle,
 } from "lucide-react";
 
 type PerfilInfo = { experiencia: number; educacion: number; habilidades: number };
@@ -43,6 +43,7 @@ export default function AnalizarPage() {
   const [error, setError] = useState<string | null>(null);
   const [analisis, setAnalisis] = useState<CVAnalisis | null>(null);
   const [perfilInfo, setPerfilInfo] = useState<PerfilInfo | null>(null);
+  const [truncado, setTruncado] = useState(false);
   const [arrastrando, setArrastrando] = useState(false);
   const cvRef = useRef<HTMLInputElement>(null);
   const certRef = useRef<HTMLInputElement>(null);
@@ -76,6 +77,7 @@ export default function AnalizarPage() {
       if (!r.ok) throw new Error(j.error || "Error al analizar");
       setAnalisis(j.analisis);
       setPerfilInfo(j.perfil_actualizado ?? null);
+      setTruncado(!!j.truncado);
     } catch (e: any) {
       setError(e.message);
     }
@@ -233,6 +235,16 @@ export default function AnalizarPage() {
           <Link href="/dashboard/perfil" className="btn-accent shrink-0">
             Ver mi perfil <ArrowRight className="h-4 w-4" />
           </Link>
+        </div>
+      )}
+
+      {analisis && truncado && (
+        <div className="card flex items-start gap-3 border-amber-300 bg-amber-50 p-4">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <p className="text-sm text-amber-800">
+            Tu hoja de vida o certificados eran muy extensos: la IA solo analizó una parte del texto.
+            Si notas información faltante, resume el documento y vuelve a intentarlo.
+          </p>
         </div>
       )}
 

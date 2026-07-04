@@ -35,6 +35,10 @@ export async function GET(_req: Request, { params }: { params: { codigo: string 
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `inline; filename="certificado-${codigo}.pdf"`,
+      // El certificado es inmutable una vez avalado: el mismo código
+      // siempre genera el mismo PDF, así que puede cachearse de forma
+      // agresiva en vez de regenerarlo en cada apertura del QR.
+      "Cache-Control": "public, max-age=86400, immutable",
     },
   });
 }

@@ -1,13 +1,7 @@
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { GraduationCap, User, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
-
-const estadoBadge: Record<string, string> = {
-  en_curso: "bg-amber-50 text-amber-700",
-  finalizada: "bg-teal-50 text-teal-700",
-  aprobada: "bg-teal-50 text-teal-700",
-  suspendida: "bg-red-50 text-red-600",
-};
+import { estiloEstadoPractica, etiquetaEstadoPractica, porcentajeCumplimiento } from "@/lib/estadoPractica";
 
 export default async function PracticasPage() {
   const profile = await requireProfile();
@@ -65,7 +59,7 @@ export default async function PracticasPage() {
           {/* Lista */}
           <div className="space-y-3">
             {lista.map((p) => {
-              const pct = p.horas_planificadas ? Math.min(100, Math.round((p.horas_cumplidas / p.horas_planificadas) * 100)) : 0;
+              const pct = porcentajeCumplimiento(p.horas_cumplidas, p.horas_planificadas);
               return (
                 <div key={p.id} className="card p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
@@ -77,8 +71,8 @@ export default async function PracticasPage() {
                         <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {p.horas_cumplidas}/{p.horas_planificadas} h</span>
                       </div>
                     </div>
-                    <span className={`badge capitalize ${estadoBadge[p.estado] ?? "bg-slate-100 text-slate-600"}`}>
-                      {String(p.estado).replace("_", " ")}
+                    <span className={`badge capitalize ${estiloEstadoPractica(p.estado)}`}>
+                      {etiquetaEstadoPractica(p.estado)}
                     </span>
                   </div>
                   <div className="mt-3">
