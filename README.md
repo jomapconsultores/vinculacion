@@ -34,8 +34,9 @@ npm run dev
 | `NEXT_PUBLIC_SUPABASE_URL` | URL del proyecto Supabase |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clave pública (anon) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Clave service role (solo servidor) |
-| `ANTHROPIC_API_KEY` | Clave de Claude (funciones de IA) |
-| `ANTHROPIC_MODEL` | Modelo (por defecto `claude-sonnet-5`) |
+| `DEEPSEEK_API_KEY` | Clave de DeepSeek (funciones de IA, primer proveedor del fallback) |
+| `MISTRAL_API_KEY` | Clave de Mistral (segundo proveedor del fallback) |
+| `CODESTRAL_API_KEY` | Clave de Codestral (tercer proveedor del fallback) |
 | `NEXT_PUBLIC_SITE_URL` | URL pública del sitio |
 
 ### Base de datos
