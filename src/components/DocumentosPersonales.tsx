@@ -1,15 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FolderLock, Upload, Loader2, AlertTriangle, ShieldCheck } from "lucide-react";
-import { DOCUMENTOS_CATEGORIAS, type DocumentoCategoria } from "@/lib/documentos";
-import { DocumentoItem, type Documento } from "@/components/DocumentoItem";
+import { FolderLock, Upload, Loader2, AlertTriangle, ShieldCheck, Sparkles } from "lucide-react";
+import { DOCUMENTOS_CATEGORIAS, sugerirCategoria, type DocumentoCategoria } from "@/lib/documentos";
+import type { Documento } from "@/components/DocumentoItem";
+import { DocumentosPorCategoria } from "@/components/DocumentosPorCategoria";
 
 export function DocumentosPersonales() {
   const [docs, setDocs] = useState<Documento[]>([]);
   const [cargando, setCargando] = useState(true);
   const [subiendo, setSubiendo] = useState(false);
-  const [categoria, setCategoria] = useState<DocumentoCategoria>("otro");
+  const [drag, setDrag] = useState(false);
+  // Archivo recién soltado/seleccionado, en espera de confirmar la carpeta
+  // sugerida (o corregirla) antes de subirlo de verdad.
+  const [pendiente, setPendiente] = useState<{ file: File; categoria: DocumentoCategoria } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -28,19 +32,26 @@ export function DocumentosPersonales() {
     cargar();
   }, []);
 
-  async function subir(file: File) {
+  function onFiles(files: FileList | null) {
+    const file = files?.[0];
+    if (!file) return;
+    setError(null);
+    setPendiente({ file, categoria: sugerirCategoria(file.name) });
+  }
+
+  async function confirmarSubida() {
+    if (!pendiente) return;
     setSubiendo(true);
     setError(null);
     try {
       const fd = new FormData();
-      fd.append("archivo", file);
-      fd.append("categoria", categoria);
+      fd.append("archivo", pendiente.file);
+      fd.append("categoria", pendiente.categoria);
       const r = await fetch("/api/documentos", { method: "POST", body: fd });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "No se pudo subir el archivo.");
-      // Usa el documento recién creado que ya devuelve el POST, en vez de
-      // volver a pedir la lista completa.
       if (j.documento) setDocs((prev) => [j.documento as Documento, ...prev]);
+      setPendiente(null);
     } catch (e: any) {
       setError(e.message);
     }
@@ -71,39 +82,73 @@ export function DocumentosPersonales() {
         otro funcionario, empleador o postulante tiene acceso a tus archivos.
       </p>
 
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <select
-          value={categoria}
-          onChange={(e) => setCategoria(e.target.value as DocumentoCategoria)}
-          className="input sm:w-56"
-        >
-          {DOCUMENTOS_CATEGORIAS.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
+      {pendiente ? (
+        <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
+          <p className="flex items-center gap-2 text-sm font-medium text-blue-900">
+            <Sparkles className="h-4 w-4" /> Carpeta sugerida para "{pendiente.file.name}"
+          </p>
+          <p className="mt-1 text-xs text-blue-700">
+            Lo detectamos según el nombre del archivo. Puedes cambiar la carpeta antes de guardar.
+          </p>
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <select
+              value={pendiente.categoria}
+              onChange={(e) => setPendiente({ ...pendiente, categoria: e.target.value as DocumentoCategoria })}
+              className="input sm:w-72"
+            >
+              {DOCUMENTOS_CATEGORIAS.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <div className="flex gap-2">
+              <button type="button" onClick={confirmarSubida} disabled={subiendo} className="btn-primary">
+                {subiendo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                Guardar en esta carpeta
+              </button>
+              <button
+                type="button"
+                onClick={() => setPendiente(null)}
+                disabled={subiendo}
+                className="btn-ghost"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
           onClick={() => inputRef.current?.click()}
-          disabled={subiendo}
-          className="btn-primary sm:w-auto"
-        >
-          {subiendo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          Subir documento
-        </button>
-        <input
-          ref={inputRef}
-          type="file"
-          accept="application/pdf,image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) subir(f);
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDrag(true);
           }}
-        />
-      </div>
-      <p className="mt-1 text-xs text-slate-400">PDF, JPG, PNG o WEBP · máximo 15MB.</p>
+          onDragLeave={() => setDrag(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDrag(false);
+            onFiles(e.dataTransfer.files);
+          }}
+          className={`mt-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 text-center transition ${
+            drag ? "border-blue-500 bg-blue-50" : "border-slate-300 hover:border-blue-400"
+          }`}
+        >
+          <Upload className="h-8 w-8 text-slate-400" />
+          <p className="text-sm font-medium text-slate-700">Arrastra un documento aquí o haz clic para subir</p>
+          <p className="text-xs text-slate-400">
+            PDF, JPG, PNG o WEBP · máximo 15MB · te sugerimos la carpeta según el nombre del archivo
+          </p>
+        </div>
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="application/pdf,image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={(e) => onFiles(e.target.files)}
+      />
 
       {error && (
         <p className="mt-3 flex items-center gap-2 rounded-lg bg-red-50 p-2 text-sm text-red-600">
@@ -117,9 +162,7 @@ export function DocumentosPersonales() {
         ) : docs.length === 0 ? (
           <p className="text-sm text-slate-400">Todavía no has subido ningún documento.</p>
         ) : (
-          docs.map((d) => (
-            <DocumentoItem key={d.id} doc={d} onDescargar={descargar} onEliminar={eliminar} />
-          ))
+          <DocumentosPorCategoria documentos={docs} onDescargar={descargar} onEliminar={eliminar} />
         )}
       </div>
     </section>

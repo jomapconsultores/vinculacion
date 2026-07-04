@@ -1,7 +1,8 @@
 "use client";
 
 import { FolderLock } from "lucide-react";
-import { DocumentoItem, type Documento } from "@/components/DocumentoItem";
+import type { Documento } from "@/components/DocumentoItem";
+import { DocumentosPorCategoria } from "@/components/DocumentosPorCategoria";
 
 // Visor de solo lectura para admin/autoridad: ve y descarga los documentos
 // de una persona, pero no puede subir en su nombre. Los documentos ya vienen
@@ -25,7 +26,7 @@ export function DocumentosAdminView({ documentos: docs }: { documentos: Document
         {docs.length === 0 ? (
           <p className="text-sm text-slate-400">Esta persona no ha subido documentos.</p>
         ) : (
-          docs.map((d) => <DocumentoItem key={d.id} doc={d} onDescargar={descargar} />)
+          <DocumentosPorCategoria documentos={docs} onDescargar={descargar} />
         )}
       </div>
     </section>
