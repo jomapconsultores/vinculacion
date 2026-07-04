@@ -8,8 +8,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 
 // Deduplicación de títulos/cursos por título+institución (normalizado), usada
-// por /api/senescyt/agregar, /api/senescyt/importar y
-// /api/senescyt/live/importar para no insertar el mismo registro dos veces.
+// por /api/senescyt/live/importar para no insertar el mismo registro dos veces.
 export function norm(v?: string | null): string {
   return (v || "").trim().toLowerCase();
 }

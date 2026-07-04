@@ -18,7 +18,7 @@ el **empleador** rankea candidatos con IA.
 ## Stack
 - Next.js 14 (App Router, TypeScript) + Tailwind
 - Supabase (Auth con verificación por correo, Postgres, RLS)
-- Claude API (`@anthropic-ai/sdk`) para CV, match de competencias y ranking de candidatos
+- IA (DeepSeek -> Mistral -> Codestral, compatible API OpenAI) para CV, match de competencias y ranking de candidatos
 - Despliegue: Coolify (Dockerfile) + Cloudflare (subdominio)
 
 ## Puesta en marcha (local)
