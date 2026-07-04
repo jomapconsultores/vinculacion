@@ -14,8 +14,8 @@ export default async function PersonasPage({ searchParams }: { searchParams: { q
 
   let query = supabase
     .from("profiles")
-    .select("id, nombres, apellidos, cedula, email, carreras(nombre)")
-    .eq("rol", "profesional")
+    .select("id, nombres, apellidos, cedula, email, rol, carreras(nombre)")
+    .in("rol", ["estudiante", "profesional"])
     .order("apellidos", { ascending: true })
     .limit(50);
 
@@ -66,8 +66,11 @@ export default async function PersonasPage({ searchParams }: { searchParams: { q
                   {iniciales(p.nombres, p.apellidos)}
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate font-medium text-slate-800">
+                  <p className="flex items-center gap-2 truncate font-medium text-slate-800">
                     {p.nombres || "—"} {p.apellidos || ""}
+                    <span className={`badge shrink-0 ${p.rol === "estudiante" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"}`}>
+                      {p.rol === "estudiante" ? "Estudiante" : "Profesional"}
+                    </span>
                   </p>
                   <p className="truncate text-sm text-slate-500">
                     {p.cedula ?? "—"} · {p.email}

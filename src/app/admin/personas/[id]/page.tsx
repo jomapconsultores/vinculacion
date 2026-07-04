@@ -18,9 +18,9 @@ export default async function PersonaDetalle({ params }: { params: { id: string 
   const [{ data: persona }, { data: documentos }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, nombres, apellidos, cedula, email, telefono, ciudad, titulo, origen_padron, carreras(nombre)")
+      .select("id, nombres, apellidos, cedula, email, telefono, ciudad, titulo, rol, origen_padron, carreras(nombre)")
       .eq("id", params.id)
-      .eq("rol", "profesional")
+      .in("rol", ["estudiante", "profesional"])
       .maybeSingle(),
     supabase
       .from("documentos_personales")
@@ -47,6 +47,9 @@ export default async function PersonaDetalle({ params }: { params: { id: string 
             <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
               {p.nombres || "—"} {p.apellidos || ""}
               {p.origen_padron && <BadgeCheck className="h-5 w-5 text-teal-600" />}
+              <span className={`badge ${p.rol === "estudiante" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"}`}>
+                {p.rol === "estudiante" ? "Estudiante" : "Profesional"}
+              </span>
             </h1>
             <p className="text-slate-500">
               {p.titulo ?? "—"}
