@@ -2,7 +2,6 @@ import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PerfilEditor } from "@/components/PerfilEditor";
 import { CursosEditor } from "@/components/CursosEditor";
-import { SenescytPanel } from "@/components/SenescytPanel";
 import { SenescytLive } from "@/components/SenescytLive";
 import { CedulaUpload } from "@/components/CedulaUpload";
 import { DocumentosPersonales } from "@/components/DocumentosPersonales";
@@ -56,8 +55,6 @@ export default async function PerfilPage() {
       {!profile.origen_padron && <CedulaUpload />}
 
       <SenescytLive cedula={profile.cedula} />
-
-      <SenescytPanel cedula={profile.cedula} />
 
       <PerfilEditor
         profileId={profile.id}
