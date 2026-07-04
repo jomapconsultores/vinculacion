@@ -1,13 +1,13 @@
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { CursoCard } from "@/components/CursoCard";
-import { GraduationCap, Target } from "lucide-react";
+import { GraduationCap, Target, AlertTriangle } from "lucide-react";
 
 export default async function CursosPage({ searchParams }: { searchParams: { curso?: string } }) {
   const profile = await requireProfile();
   const supabase = await createClient();
 
-  const [{ data: cursos }, { data: inscr }] = await Promise.all([
+  const [{ data: cursos, error: errorCursos }, { data: inscr, error: errorInscr }] = await Promise.all([
     supabase
       .from("cursos")
       .select(
@@ -16,6 +16,8 @@ export default async function CursosPage({ searchParams }: { searchParams: { cur
       .order("nombre"),
     supabase.from("inscripciones_curso").select("curso_id, estado").eq("profile_id", profile.id),
   ]);
+  const error = errorCursos || errorInscr;
+  if (error) console.error("[dashboard/cursos]", error.message);
 
   const estadoPorCurso = new Map((inscr ?? []).map((i: any) => [i.curso_id, i.estado]));
   const destacado = searchParams.curso ? Number(searchParams.curso) : null;
@@ -24,8 +26,7 @@ export default async function CursosPage({ searchParams }: { searchParams: { cur
   const internos = (cursos ?? []).filter((c: any) => c.origen !== "ucuenca");
 
   function tarjeta(c: any) {
-    const est = estadoPorCurso.get(c.id);
-    const estado = est === "aprobado" ? "aprobado" : est ? "en_progreso" : "ninguno";
+    const estado = estadoPorCurso.get(c.id) ?? "ninguno";
     return (
       <CursoCard
         key={c.id}
@@ -52,6 +53,13 @@ export default async function CursosPage({ searchParams }: { searchParams: { cur
           competencias frente a las ofertas de empleo.
         </p>
       </div>
+
+      {error && (
+        <div className="card flex flex-col items-center gap-2 py-12 text-center text-red-500">
+          <AlertTriangle className="h-10 w-10" />
+          <p>No se pudo cargar la oferta de cursos. Recarga la página o intenta más tarde.</p>
+        </div>
+      )}
 
       {reales.length > 0 && (
         <section className="space-y-4">

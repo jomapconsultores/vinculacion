@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { GraduationCap } from "lucide-react";
+import { GraduationCap, AlertTriangle } from "lucide-react";
 
 type Practica = {
   id: number;
@@ -25,10 +25,11 @@ const estadoLabel = (estado: string | null) =>
 export default async function PracticasPage() {
   const supabase = await createClient();
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("practicas_preprofesionales")
     .select("id, estudiante_nombre, tutor, horas_planificadas, horas_cumplidas, estado, servicios(nombre)")
     .order("estudiante_nombre", { ascending: true });
+  if (error) console.error("[admin/practicas] practicas_preprofesionales:", error.message);
 
   const practicas: Practica[] = (data as unknown as Practica[]) ?? [];
 
@@ -78,7 +79,13 @@ export default async function PracticasPage() {
       </section>
 
       {/* Tabla */}
-      {practicas.length === 0 ? (
+      {error ? (
+        <div className="card flex flex-col items-center gap-2 py-16 text-center">
+          <AlertTriangle className="h-10 w-10 text-rose-400" />
+          <p className="font-medium text-rose-600">No se pudo cargar la lista de prácticas</p>
+          <p className="text-sm text-slate-400">Intenta recargar la página. Si el problema persiste, contacta a soporte.</p>
+        </div>
+      ) : practicas.length === 0 ? (
         <div className="card flex flex-col items-center gap-2 py-16 text-center">
           <GraduationCap className="h-10 w-10 text-slate-300" />
           <p className="font-medium text-slate-600">No hay prácticas registradas</p>

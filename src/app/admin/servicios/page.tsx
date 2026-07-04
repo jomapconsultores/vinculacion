@@ -49,10 +49,11 @@ const estilos: Record<
 export default async function ServiciosPage() {
   const supabase = await createClient();
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("v_servicio_ejecucion")
     .select("*")
     .order("porcentaje_ejecucion", { ascending: true });
+  if (error) console.error("[admin/servicios] v_servicio_ejecucion:", error.message);
 
   const servicios: ServicioEjecucion[] = (data as ServicioEjecucion[]) ?? [];
 
@@ -112,7 +113,13 @@ export default async function ServiciosPage() {
       </div>
 
       {/* Lista de servicios */}
-      {servicios.length === 0 ? (
+      {error ? (
+        <div className="card flex flex-col items-center gap-2 py-16 text-center">
+          <AlertTriangle className="h-10 w-10 text-rose-400" />
+          <p className="font-medium text-rose-600">No se pudo cargar la información de servicios</p>
+          <p className="text-sm text-slate-400">Intenta recargar la página. Si el problema persiste, contacta a soporte.</p>
+        </div>
+      ) : servicios.length === 0 ? (
         <div className="card flex flex-col items-center gap-2 py-16 text-center">
           <HeartHandshake className="h-10 w-10 text-slate-300" />
           <p className="font-medium text-slate-600">Aún no hay servicios registrados</p>

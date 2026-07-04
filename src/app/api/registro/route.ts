@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { cedulaOcupada } from "@/lib/registro";
-import { cedulaFormato, limiteExcedido, ipDe } from "@/lib/seguridad";
+import { cedulaValida, limiteExcedido, ipDe } from "@/lib/seguridad";
 
 export const runtime = "nodejs";
 
@@ -30,8 +30,8 @@ export async function POST(req: Request) {
   if (!password || password.length < 6) {
     return NextResponse.json({ error: "La contraseña debe tener al menos 6 caracteres" }, { status: 400 });
   }
-  if (!cedula || !cedulaFormato(cedula)) {
-    return NextResponse.json({ error: "Cédula inválida (10 dígitos)" }, { status: 400 });
+  if (!cedula || !cedulaValida(cedula)) {
+    return NextResponse.json({ error: "Cédula inválida" }, { status: 400 });
   }
 
   const ocupada = await cedulaOcupada(cedula);

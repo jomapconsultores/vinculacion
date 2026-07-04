@@ -10,11 +10,17 @@ export async function POST(req: Request) {
   const { data: me } = await supabase.from("profiles").select("rol").eq("id", user.id).maybeSingle();
   if (me?.rol !== "admin") return NextResponse.json({ error: "Solo el administrador puede aprobar" }, { status: 403 });
 
-  const { profileId, aprobar } = await req.json();
+  const body = await req.json().catch(() => null);
+  const profileId = body?.profileId;
+  const aprobar = !!body?.aprobar;
   if (!profileId) return NextResponse.json({ error: "Falta profileId" }, { status: 400 });
 
   const admin = createAdminClient();
-  const { error } = await admin.from("profiles").update({ aprobado: !!aprobar }).eq("id", profileId).eq("rol", "autoridad");
+  const { error } = await admin
+    .from("profiles")
+    .update({ aprobado: aprobar, rechazado_en: aprobar ? null : new Date().toISOString() })
+    .eq("id", profileId)
+    .eq("rol", "autoridad");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ ok: true });

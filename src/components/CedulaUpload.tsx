@@ -1,9 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { IdCard, Upload, Loader2, CheckCircle2, AlertTriangle, ShieldCheck } from "lucide-react";
 
 export function CedulaUpload() {
+  const router = useRouter();
   const [drag, setDrag] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,8 +23,8 @@ export function CedulaUpload() {
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "No se pudo procesar la cédula");
       setRes(j);
-      // Solo recargamos si el perfil realmente se actualizó (cédula verificada).
-      if (j.actualizado) setTimeout(() => window.location.reload(), 2500);
+      // Solo refrescamos si el perfil realmente se actualizó (cédula verificada).
+      if (j.actualizado) router.refresh();
     } catch (e: any) {
       setError(e.message);
     }

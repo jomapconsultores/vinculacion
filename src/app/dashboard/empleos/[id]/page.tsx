@@ -18,7 +18,7 @@ export default async function EmpleoDetalle({ params }: { params: { id: string }
   if (!empleo) notFound();
 
   const { data: post } = await supabase
-    .from("postulaciones").select("ia_analisis").eq("empleo_id", params.id).eq("profile_id", profile.id).maybeSingle();
+    .from("postulaciones").select("ia_analisis, estado").eq("empleo_id", params.id).eq("profile_id", profile.id).maybeSingle();
 
   return (
     <div className="space-y-6">
@@ -53,7 +53,11 @@ export default async function EmpleoDetalle({ params }: { params: { id: string }
         </div>
       </div>
 
-      <PostularPanel empleoId={Number(params.id)} analisisInicial={(post?.ia_analisis as any) ?? null} />
+      <PostularPanel
+        empleoId={Number(params.id)}
+        analisisInicial={(post?.ia_analisis as any) ?? null}
+        yaEnviada={post?.estado === "enviada" || post?.estado === "en_revision" || post?.estado === "preseleccionado" || post?.estado === "contratado"}
+      />
     </div>
   );
 }

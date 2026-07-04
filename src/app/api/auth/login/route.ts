@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { limiteExcedido, ipDe } from "@/lib/seguridad";
 
 // Bitácora de intentos (diagnóstico remoto); nunca guarda la contraseña.
 async function logIntento(datos: Record<string, unknown>) {
@@ -23,16 +24,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Correo y contraseña son obligatorios" }, { status: 400 });
   }
 
+  // Límite de tasa: frena la fuerza bruta de contraseñas sobre una misma cuenta/IP.
+  if (limiteExcedido(`login:${ipDe(req)}:${email.toLowerCase()}`, 8, 60_000, Date.now())) {
+    return NextResponse.json({ error: "Demasiados intentos. Espera un momento e intenta de nuevo." }, { status: 429 });
+  }
+
   const ua = req.headers.get("user-agent") ?? "";
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
-    await logIntento({ email, ok: false, error: error.message, ua });
+    void logIntento({ email, ok: false, error: error.message, ua });
     const msg = /invalid login credentials/i.test(error.message)
       ? "Credenciales inválidas o correo sin verificar."
       : error.message;
     return NextResponse.json({ error: msg }, { status: 401 });
   }
-  await logIntento({ email, ok: true, ua });
+  void logIntento({ email, ok: true, ua });
   return NextResponse.json({ ok: true });
 }

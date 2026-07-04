@@ -5,6 +5,7 @@ import { CursosEditor } from "@/components/CursosEditor";
 import { SenescytPanel } from "@/components/SenescytPanel";
 import { SenescytLive } from "@/components/SenescytLive";
 import { CedulaUpload } from "@/components/CedulaUpload";
+import { DocumentosPersonales } from "@/components/DocumentosPersonales";
 import { BadgeCheck } from "lucide-react";
 
 export default async function PerfilPage() {
@@ -75,6 +76,8 @@ export default async function PerfilPage() {
       />
 
       <CursosEditor cursos={(cur as any) ?? []} />
+
+      <DocumentosPersonales />
     </div>
   );
 }

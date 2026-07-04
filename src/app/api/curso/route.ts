@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
-import { randomBytes } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 
-// Inscribir o aprobar un curso. Al aprobar, la universidad AVALA la competencia.
+// Inscribir un curso interno o marcarlo como completado. El aval de la
+// competencia lo emite el staff en /api/admin/cursos/revisar, nunca el
+// propio graduado (ver 0016_revisar_curso_rpc.sql).
 export async function POST(req: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
   const { cursoId, accion } = await req.json();
-  if (!cursoId || !["inscribir", "aprobar"].includes(accion))
+  if (!cursoId || !["inscribir", "enviar_revision"].includes(accion))
     return NextResponse.json({ error: "Parámetros inválidos" }, { status: 400 });
 
   const { data: curso } = await supabase
@@ -25,45 +26,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ estado: "en_progreso" });
   }
 
-  // aprobar: exige estar inscrito primero (no se puede avalar un curso no iniciado)
-  const { data: insc } = await supabase
-    .from("inscripciones_curso")
-    .select("estado")
-    .eq("profile_id", user.id)
-    .eq("curso_id", cursoId)
-    .maybeSingle();
-  if (!insc) {
-    return NextResponse.json({ error: "Debes inscribirte en el curso antes de aprobarlo." }, { status: 409 });
-  }
-  const { error: eInsc } = await supabase.from("inscripciones_curso").upsert(
-    { profile_id: user.id, curso_id: cursoId, estado: "aprobado", fecha_aprobacion: new Date().toISOString() },
-    { onConflict: "profile_id,curso_id" }
-  );
-  if (eInsc) return NextResponse.json({ error: eInsc.message }, { status: 500 });
-
-  // Avalar la competencia asociada
-  if (curso.competencia_id) {
-    const { error: eComp } = await supabase.from("competencias_graduado").upsert(
-      {
-        profile_id: user.id,
-        competencia_id: curso.competencia_id,
-        estado: "avalada",
-        avalada_por: "Universidad — Educación Continua",
-        fecha_aval: new Date().toISOString(),
-        curso_id: cursoId,
-      },
-      { onConflict: "profile_id,competencia_id" }
-    );
-    if (eComp) return NextResponse.json({ error: eComp.message }, { status: 500 });
-    // Asignar código de verificación del certificado (solo si aún no tiene)
-    const codigo = randomBytes(6).toString("hex").toUpperCase();
-    await supabase
-      .from("competencias_graduado")
-      .update({ codigo_verificacion: codigo })
-      .eq("profile_id", user.id)
-      .eq("competencia_id", curso.competencia_id)
-      .is("codigo_verificacion", null);
+  // enviar_revision: solo marca el curso como pendiente de revisión de staff.
+  const { data: resultado, error: eRpc } = await supabase.rpc("enviar_revision_curso", { p_curso_id: cursoId });
+  if (eRpc) {
+    const status = /inscribirte|no está en un estado/.test(eRpc.message) ? 409 : 500;
+    return NextResponse.json({ error: eRpc.message }, { status });
   }
 
-  return NextResponse.json({ estado: "aprobado", competencia_avalada: !!curso.competencia_id });
+  return NextResponse.json(resultado ?? { estado: "pendiente_revision" });
 }

@@ -32,7 +32,7 @@ function jsessionFrom(headers: Headers): string {
 
 // 1) Abre una sesión en SENESCYT y devuelve el captcha para que el usuario lo lea.
 export async function iniciarSesionSenescyt(): Promise<SesionSenescyt> {
-  const r = await fetch(BASE, { headers: { "User-Agent": UA } });
+  const r = await fetch(BASE, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(15_000) });
   const cookie = jsessionFrom(r.headers);
   const html = await r.text();
   const viewstate = (html.match(/name="javax\.faces\.ViewState"[^>]*value="([^"]*)"/) || [])[1] || "";
@@ -41,6 +41,7 @@ export async function iniciarSesionSenescyt(): Promise<SesionSenescyt> {
 
   const rc = await fetch(HOST + capsrc, {
     headers: { Cookie: cookie, "User-Agent": UA, Referer: BASE },
+    signal: AbortSignal.timeout(15_000),
   });
   const buf = Buffer.from(await rc.arrayBuffer());
   return {
@@ -113,6 +114,7 @@ export async function consultarSenescytLive(args: {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body,
+      signal: AbortSignal.timeout(15_000),
     });
     raw = await r.text();
   } catch (e: any) {

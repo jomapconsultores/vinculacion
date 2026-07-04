@@ -17,6 +17,7 @@ export default async function SolicitudesPage() {
     .select("id, nombres, apellidos, email, created_at")
     .eq("rol", "autoridad")
     .eq("aprobado", false)
+    .is("rechazado_en", null)
     .order("created_at", { ascending: true });
 
   const lista = pendientes ?? [];

@@ -1,13 +1,15 @@
 import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { Sidebar, type NavItem } from "@/components/Sidebar";
-import { LayoutDashboard, HeartHandshake, GraduationCap, BarChart3, TrendingUp, ClipboardList, UserCheck, Brain } from "lucide-react";
+import { LayoutDashboard, HeartHandshake, GraduationCap, BarChart3, TrendingUp, ClipboardList, UserCheck, Brain, Users } from "lucide-react";
 
 const baseItems: NavItem[] = [
   { href: "/admin", label: "Panel", icon: <LayoutDashboard className="h-4 w-4" /> },
+  { href: "/admin/personas", label: "Personas", icon: <Users className="h-4 w-4" /> },
   { href: "/admin/empleabilidad", label: "Empleabilidad", icon: <TrendingUp className="h-4 w-4" /> },
   { href: "/admin/servicios", label: "Servicios", icon: <HeartHandshake className="h-4 w-4" /> },
   { href: "/admin/practicas", label: "Prácticas", icon: <GraduationCap className="h-4 w-4" /> },
+  { href: "/admin/cursos", label: "Revisión de cursos", icon: <UserCheck className="h-4 w-4" /> },
   { href: "/admin/indicadores", label: "Indicadores", icon: <BarChart3 className="h-4 w-4" /> },
   { href: "/admin/encuestas", label: "Encuestas", icon: <ClipboardList className="h-4 w-4" /> },
   { href: "/admin/psicometria", label: "Psicometría", icon: <Brain className="h-4 w-4" /> },

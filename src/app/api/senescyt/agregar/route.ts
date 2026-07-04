@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { AREAS_UNESCO } from "@/lib/cv-types";
+import { claveTituloInstitucion } from "@/lib/senescyt";
 
 // El usuario declara sus títulos dentro del sistema (sin salir a SENESCYT):
 // se guardan en el registro espejo y en su sección de educación.
@@ -30,7 +31,6 @@ export async function POST(req: Request) {
   if (!institucion) return NextResponse.json({ error: "Indica la institución que otorgó el título" }, { status: 400 });
   if (!area) return NextResponse.json({ error: "Selecciona el área de conocimiento" }, { status: 400 });
 
-  const norm = (v?: string | null) => (v || "").trim().toLowerCase();
   const admin = createAdminClient();
 
   // Registro espejo (sin duplicar)
@@ -38,8 +38,9 @@ export async function POST(req: Request) {
     .from("titulos_senescyt")
     .select("titulo, institucion")
     .eq("cedula", prof.cedula);
+  const claveNueva = claveTituloInstitucion(titulo, institucion);
   const yaEnRegistro = (exTit ?? []).some(
-    (t: any) => norm(t.titulo) === norm(titulo) && norm(t.institucion) === norm(institucion)
+    (t: any) => claveTituloInstitucion(t.titulo, t.institucion) === claveNueva
   );
   if (!yaEnRegistro) {
     const { error: e1 } = await admin.from("titulos_senescyt").insert({
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
   // Educación del perfil (sin duplicar)
   const { data: exEdu } = await supabase.from("educacion").select("titulo, institucion").eq("profile_id", user.id);
   const yaEnEducacion = (exEdu ?? []).some(
-    (e: any) => norm(e.titulo) === norm(titulo) && norm(e.institucion) === norm(institucion)
+    (e: any) => claveTituloInstitucion(e.titulo, e.institucion) === claveNueva
   );
   if (!yaEnEducacion) {
     const { error: e2 } = await supabase.from("educacion").insert({

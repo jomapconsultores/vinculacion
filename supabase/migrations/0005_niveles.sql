@@ -1,7 +1,10 @@
 -- ============================================================
 -- 0005 — Niveles de usuario y aprobación de autoridades
--- (Los ALTER TYPE ADD VALUE se ejecutan aparte por el runner)
 -- ============================================================
+-- El valor de enum 'profesional' se agrega en 0004_1_rol_profesional_enum.sql,
+-- en su propio archivo/transacción: Postgres no permite usar un valor de enum
+-- recién agregado dentro de la misma transacción que lo agregó, así que no
+-- puede ir en este mismo archivo junto con el UPDATE de abajo que lo usa.
 
 -- Campo de aprobación (estudiante/profesional/empleador = true; autoridad nueva = false)
 alter table profiles add column if not exists aprobado boolean not null default true;

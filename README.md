@@ -40,7 +40,8 @@ npm run dev
 
 ### Base de datos
 Las migraciones están en `supabase/migrations/` (esquema, RLS y semillas). Aplícalas en orden
-(`0001` → `0011`). Configura en Supabase Auth el **Site URL** y el redirect `…/auth/callback`.
+(`0001` → `0013`). Configura en Supabase Auth el **Site URL** y el redirect `…/auth/callback`.
+La migración `0013` crea además el bucket de Storage `documentos-personales` (privado).
 
 ## Cuentas de prueba (padrón sembrado)
 Al registrarte como **graduado** con una de estas cédulas, el sistema autollena tus datos:

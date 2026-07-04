@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -23,7 +24,10 @@ export type Profile = {
   carreras?: { nombre: string } | null;
 };
 
-export async function getSessionProfile(): Promise<Profile | null> {
+// cache() memoiza por request de servidor: layout + page pueden llamar
+// requireProfile()/getSessionProfile() por separado sin duplicar el
+// round-trip a Supabase (auth.getUser() + select de profiles).
+export const getSessionProfile = cache(async (): Promise<Profile | null> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -37,7 +41,7 @@ export async function getSessionProfile(): Promise<Profile | null> {
     .maybeSingle();
 
   return (data as Profile) ?? null;
-}
+});
 
 export async function requireProfile(): Promise<Profile> {
   const profile = await getSessionProfile();

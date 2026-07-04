@@ -74,11 +74,7 @@ export function SenescytLive({ cedula }: { cedula: string | null }) {
     setImportando(true);
     setMsg(null);
     try {
-      const r = await fetch("/api/senescyt/live/importar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ titulos, cursos, nombre }),
-      });
+      const r = await fetch("/api/senescyt/live/importar", { method: "POST" });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error);
       const partes = [
@@ -87,8 +83,8 @@ export function SenescytLive({ cedula }: { cedula: string | null }) {
         j.nombre_actualizado ? "Se colocó tu nombre en el perfil." : "",
       ].filter(Boolean);
       setMsg(partes.join(" "));
-      // Recargar para que el nombre y los títulos se reflejen en toda la página
-      setTimeout(() => window.location.reload(), 1500);
+      // Refresca los Server Components de la página (perfil, nombre, títulos)
+      // sin perder el estado de la SPA ni forzar una recarga completa.
       router.refresh();
     } catch (e: any) {
       setMsg(e.message || "No se pudo importar.");

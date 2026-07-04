@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { cedulaOcupada } from "@/lib/registro";
+import { limiteExcedido, ipDe } from "@/lib/seguridad";
 
 const ROLES = new Set(["profesional", "empleador", "autoridad"]);
 
 // Registro same-origin para roles con verificación por correo.
 // (Los estudiantes usan /api/registro, que confirma directo.)
 export async function POST(req: Request) {
+  // Límite de tasa: frena el spam de correos de verificación y la
+  // enumeración de cuentas vía el mensaje "ya existe una cuenta".
+  if (limiteExcedido(`auth-registro:${ipDe(req)}`, 5, 60_000, Date.now())) {
+    return NextResponse.json({ error: "Demasiados intentos. Espera un momento e intenta de nuevo." }, { status: 429 });
+  }
+
   let body: { email?: string; password?: string; cedula?: string; rol?: string; empresa_nombre?: string };
   try {
     body = await req.json();

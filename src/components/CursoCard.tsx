@@ -72,17 +72,17 @@ export function CursoCard({
   destacado,
 }: {
   curso: Curso;
-  estadoInicial: "ninguno" | "en_progreso" | "aprobado";
+  estadoInicial: "ninguno" | "en_progreso" | "pendiente_revision" | "aprobado" | "reprobado";
   destacado: boolean;
 }) {
   const router = useRouter();
   const [estado, setEstado] = useState(estadoInicial);
-  const [loading, setLoading] = useState<null | "inscribir" | "aprobar">(null);
+  const [loading, setLoading] = useState<null | "inscribir" | "enviar_revision">(null);
   const [error, setError] = useState<string | null>(null);
 
   if (curso.origen === "ucuenca") return <CursoExterno curso={curso} destacado={destacado} />;
 
-  async function accionar(accion: "inscribir" | "aprobar") {
+  async function accionar(accion: "inscribir" | "enviar_revision") {
     setLoading(accion);
     setError(null);
     try {
@@ -95,7 +95,7 @@ export function CursoCard({
         const j = await r.json().catch(() => ({}));
         throw new Error(j.error || "No se pudo completar la acción");
       }
-      setEstado(accion === "aprobar" ? "aprobado" : "en_progreso");
+      setEstado(accion === "enviar_revision" ? "pendiente_revision" : "en_progreso");
       router.refresh();
     } catch (e: any) {
       setError(e.message || "Sin conexión. Intenta de nuevo.");
@@ -113,6 +113,12 @@ export function CursoCard({
         )}
         {estado === "en_progreso" && (
           <span className="badge bg-amber-50 text-amber-700">En progreso</span>
+        )}
+        {estado === "pendiente_revision" && (
+          <span className="badge bg-blue-50 text-blue-700">En revisión</span>
+        )}
+        {estado === "reprobado" && (
+          <span className="badge bg-red-50 text-red-700">No aprobado</span>
         )}
       </div>
       <h3 className="mt-3 font-semibold text-slate-900">{curso.nombre}</h3>
@@ -133,20 +139,23 @@ export function CursoCard({
             {loading === "inscribir" ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Inscribirme
           </button>
         )}
-        {estado === "en_progreso" && (
-          <button className="btn-primary flex-1" onClick={() => accionar("aprobar")} disabled={!!loading}>
-            {loading === "aprobar" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Award className="h-4 w-4" />}
-            Aprobar y avalar
+        {(estado === "en_progreso" || estado === "reprobado") && (
+          <button className="btn-primary flex-1" onClick={() => accionar("enviar_revision")} disabled={!!loading}>
+            {loading === "enviar_revision" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Award className="h-4 w-4" />}
+            Marcar como completado
           </button>
+        )}
+        {estado === "pendiente_revision" && (
+          <p className="flex-1 text-center text-sm font-medium text-blue-700">Esperando revisión del staff</p>
         )}
         {estado === "aprobado" && (
           <p className="flex-1 text-center text-sm font-medium text-teal-700">Competencia avalada ✓</p>
         )}
       </div>
       {error && <p className="mt-2 rounded-lg bg-red-50 p-2 text-center text-xs text-red-600">{error}</p>}
-      {estado === "en_progreso" && (
+      {(estado === "en_progreso" || estado === "reprobado") && (
         <p className="mt-2 text-center text-[11px] text-slate-400">
-          (Demo) &quot;Aprobar&quot; simula la culminación del curso y el aval institucional.
+          Un miembro del staff revisará tu avance antes de emitir el aval institucional.
         </p>
       )}
     </div>

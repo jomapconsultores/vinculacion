@@ -19,10 +19,11 @@ export async function POST() {
 
   const { data: profile } = await supabase
     .from("profiles").select("*, carreras(nombre)").eq("id", user.id).single();
-  const [{ data: exp }, { data: edu }, { data: hab }] = await Promise.all([
+  const [{ data: exp }, { data: edu }, { data: hab }, { data: cvActual }] = await Promise.all([
     supabase.from("experiencia_laboral").select("*").eq("profile_id", user.id),
     supabase.from("educacion").select("*").eq("profile_id", user.id),
     supabase.from("habilidades").select("*").eq("profile_id", user.id),
+    supabase.from("cvs").select("contenido").eq("profile_id", user.id).maybeSingle(),
   ]);
 
   const insumos = {
@@ -54,8 +55,13 @@ export async function POST() {
     );
   }
 
+  // Combina con el contenido existente (p.ej. foto, perfil UNESCO, capacitaciones
+  // y certificaciones detectadas por /api/cv/analizar) en vez de reemplazarlo:
+  // este flujo solo produce resumen/experiencia/educacion/habilidades/sugerencias.
+  const contenido = { ...(cvActual?.contenido as Record<string, unknown> | null), ...cv };
+
   await supabase.from("cvs").upsert(
-    { profile_id: user.id, contenido: cv, generado_ia: true, updated_at: new Date().toISOString() },
+    { profile_id: user.id, contenido, generado_ia: true, updated_at: new Date().toISOString() },
     { onConflict: "profile_id" }
   );
 

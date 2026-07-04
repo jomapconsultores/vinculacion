@@ -1,6 +1,6 @@
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { GraduationCap, User, Clock, CheckCircle2 } from "lucide-react";
+import { GraduationCap, User, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
 
 const estadoBadge: Record<string, string> = {
   en_curso: "bg-amber-50 text-amber-700",
@@ -13,11 +13,12 @@ export default async function PracticasPage() {
   const profile = await requireProfile();
   const supabase = await createClient();
 
-  const { data: practicas } = await supabase
+  const { data: practicas, error } = await supabase
     .from("practicas_preprofesionales")
     .select("id, horas_planificadas, horas_cumplidas, tutor, estado, servicios(nombre, area)")
     .eq("profile_id", profile.id)
     .order("id", { ascending: true });
+  if (error) console.error("[dashboard/practicas] practicas_preprofesionales:", error.message);
 
   const lista = (practicas ?? []) as any[];
   const totalPlan = lista.reduce((a, p) => a + (p.horas_planificadas || 0), 0);
@@ -33,7 +34,12 @@ export default async function PracticasPage() {
         </p>
       </div>
 
-      {lista.length === 0 ? (
+      {error ? (
+        <div className="card flex flex-col items-center gap-3 p-12 text-center text-red-500">
+          <AlertTriangle className="h-10 w-10" />
+          <p>No se pudo cargar tu información de prácticas. Recarga la página o intenta más tarde.</p>
+        </div>
+      ) : lista.length === 0 ? (
         <div className="card flex flex-col items-center gap-3 p-12 text-center text-slate-400">
           <GraduationCap className="h-10 w-10" />
           <p>Aún no tienes prácticas asignadas. Cuando te asignen a un servicio, aparecerán aquí.</p>

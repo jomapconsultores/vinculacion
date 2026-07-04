@@ -1,8 +1,20 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { askJSON } from "@/lib/ai";
 
 export const maxDuration = 60;
+
+// Cache corto en memoria del último análisis calculado por el servidor para
+// (usuario, empleo): evita pagar la llamada a la IA dos veces cuando
+// 'confirmar' llega justo después de 'evaluar' sobre la misma oferta. Nunca
+// se confía en un análisis enviado por el cliente: si no hay entrada vigente
+// (o el proceso se reinició), se recalcula igual en el servidor.
+const cacheAnalisis = new Map<string, { analisis: Analisis; vence: number }>();
+const TTL_ANALISIS_MS = 5 * 60_000;
+
+function claveAnalisis(userId: string, empleoId: number) {
+  return `${userId}:${empleoId}`;
+}
 
 type Brecha = { competencia_id: number | null; competencia: string; por_que: string; curso_sugerido: string | null; curso_id: number | null };
 type Analisis = {
@@ -14,21 +26,16 @@ type Analisis = {
   fuente: "ia" | "heuristica";
 };
 
-export async function POST(req: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-
-  const { empleoId } = await req.json();
-  if (!empleoId) return NextResponse.json({ error: "Falta empleoId" }, { status: 400 });
-
-  // Oferta + competencias requeridas
+// Recalcula el análisis de match SIEMPRE en el servidor (nunca confía en un
+// analisis enviado por el cliente) para que 'confirmar' no pueda usarse para
+// grabar un match_score/ia_analisis falsificado.
+async function evaluar(supabase: any, user: { id: string }, empleoId: number): Promise<Analisis> {
   const { data: empleo } = await supabase
     .from("empleos")
     .select("id, titulo, descripcion, empresas(nombre), empleo_competencias(requerida, competencias(id, nombre, descripcion))")
     .eq("id", empleoId)
     .single();
-  if (!empleo) return NextResponse.json({ error: "Empleo no encontrado" }, { status: 404 });
+  if (!empleo) throw new Error("Empleo no encontrado");
 
   const requeridas = (empleo as any).empleo_competencias.map((ec: any) => ({
     id: ec.competencias.id as number,
@@ -104,8 +111,53 @@ Reglas:
     };
   }
 
-  // Registrar / actualizar postulación
-  const { data: post } = await supabase
+  return analisis;
+}
+
+export async function POST(req: Request) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+
+  const body = await req.json().catch(() => null);
+  const empleoId = body?.empleoId;
+  const accion = body?.accion;
+  if (!empleoId) return NextResponse.json({ error: "Falta empleoId" }, { status: 400 });
+
+  const clave = claveAnalisis(user.id, empleoId);
+  const cacheado = cacheAnalisis.get(clave);
+
+  let analisis: Analisis;
+  if (cacheado && cacheado.vence > Date.now()) {
+    analisis = cacheado.analisis;
+  } else {
+    try {
+      analisis = await evaluar(supabase, user, empleoId);
+    } catch (e: any) {
+      if (e.message === "Empleo no encontrado") {
+        return NextResponse.json({ error: e.message }, { status: 404 });
+      }
+      return NextResponse.json({ error: "No se pudo evaluar la postulación" }, { status: 500 });
+    }
+    cacheAnalisis.set(clave, { analisis, vence: Date.now() + TTL_ANALISIS_MS });
+    if (cacheAnalisis.size > 5000) {
+      const ahora = Date.now();
+      for (const [k, v] of cacheAnalisis) if (v.vence <= ahora) cacheAnalisis.delete(k);
+    }
+  }
+
+  // 'evaluar' es solo un chequeo de elegibilidad: no toca la base de datos, para
+  // que revisar el match no equivalga a enviar una postulación real al empleador.
+  if (accion !== "confirmar") {
+    return NextResponse.json({ analisis });
+  }
+
+  // 'confirmar' persiste la postulación. match_score/ia_analisis/estado están
+  // protegidos por trigger para escrituras de usuario (ver 0012_rls_hardening.sql),
+  // así que el registro real lo hace el servidor con service role, usando el
+  // análisis que acaba de recalcular — nunca uno enviado por el cliente.
+  const admin = createAdminClient();
+  const { data: post, error } = await admin
     .from("postulaciones")
     .upsert(
       { empleo_id: empleoId, profile_id: user.id, estado: analisis.apto ? "enviada" : "borrador", match_score: analisis.match_score, ia_analisis: analisis },
@@ -113,6 +165,7 @@ Reglas:
     )
     .select()
     .single();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ analisis, postulacion: post });
 }

@@ -10,6 +10,12 @@ type IAResultado = {
   recomendacion: string;
 };
 
+// No se reevalúa con IA un candidato cuyo análisis ya es "reciente": el
+// perfil de un graduado y los requisitos de la oferta no cambian de un clic
+// a otro, así que recalcular a todos en cada clic solo multiplica el costo
+// y la latencia sin cambiar el resultado.
+const TTL_RANKING_MS = 24 * 60 * 60_000;
+
 export async function POST(req: Request) {
   const profile = await requireProfile();
   if (profile.rol !== "empleador" || !profile.empresa_id) {
@@ -46,7 +52,7 @@ export async function POST(req: Request) {
   const { data: postulaciones } = await admin
     .from("postulaciones")
     .select(
-      `id, profile_id,
+      `id, profile_id, match_score, ia_analisis,
        profiles (
          nombres, apellidos, titulo, resumen_profesional, ciudad,
          competencias_graduado ( estado, competencias ( nombre ) ),
@@ -83,10 +89,40 @@ export async function POST(req: Request) {
   });
 
   const hayIA = aiConfigurado();
-  let resultados: Record<number, IAResultado & { fuente?: string }> = {};
+  const resultados: Record<number, IAResultado & { fuente?: string }> = {};
   let mensaje: string | undefined;
 
-  if (hayIA) {
+  // Reutiliza el análisis ya guardado si es reciente; solo se manda a
+  // revaluar lo nuevo o lo vencido.
+  const ahora = Date.now();
+  const analisisPrevios = new Map<number, any>(lista.map((p) => [p.id, p.ia_analisis]));
+  for (const c of candidatos) {
+    const previo = analisisPrevios.get(c.postulacion_id);
+    const generadoEn = previo?.generado_en ? new Date(previo.generado_en).getTime() : 0;
+    if (previo && ahora - generadoEn < TTL_RANKING_MS) {
+      resultados[c.postulacion_id] = {
+        score: previo.score,
+        fortalezas: previo.fortalezas ?? [],
+        brechas: previo.brechas ?? [],
+        recomendacion: previo.recomendacion ?? "",
+        fuente: previo.fuente,
+      };
+    }
+  }
+  const candidatosPorEvaluar = candidatos.filter((c) => !resultados[c.postulacion_id]);
+
+  // Minimización de datos: el proveedor de IA solo recibe el identificador de la
+  // postulación y la información profesional relevante para el match, nunca el
+  // nombre del candidato (se reasocia localmente al construir la respuesta).
+  const candidatosParaIA = candidatosPorEvaluar.map((c) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { nombre, ...resto } = c;
+    return resto;
+  });
+
+  if (candidatosPorEvaluar.length === 0) {
+    mensaje = "Todos los candidatos ya tenían un análisis reciente.";
+  } else if (hayIA) {
     try {
       const system =
         "Eres un reclutador técnico experto. Evalúas la compatibilidad de candidatos con una vacante " +
@@ -103,7 +139,7 @@ export async function POST(req: Request) {
           descripcion: (empleo as any).descripcion,
           competencias_requeridas: requeridas,
         },
-        candidatos,
+        candidatos: candidatosParaIA,
       });
 
       const json = await askJSON<{ ranking: (IAResultado & { postulacion_id: number })[] }>(
@@ -152,24 +188,32 @@ export async function POST(req: Request) {
     };
   }
 
-  // Guardar en cada postulación
-  const ranking: any[] = [];
-  for (const c of candidatos) {
+  // Guardar solo lo recién (re)evaluado, en un único batch en vez de un
+  // update secuencial por candidato.
+  const filasPorGuardar = candidatosPorEvaluar.map((c) => {
     const r = resultados[c.postulacion_id];
-    const ia_analisis = {
-      fortalezas: r.fortalezas,
-      brechas: r.brechas,
-      recomendacion: r.recomendacion,
-      score: r.score,
-      fuente: r.fuente,
-      generado_en: new Date().toISOString(),
+    return {
+      id: c.postulacion_id,
+      match_score: r.score,
+      ia_analisis: {
+        fortalezas: r.fortalezas,
+        brechas: r.brechas,
+        recomendacion: r.recomendacion,
+        score: r.score,
+        fuente: r.fuente,
+        generado_en: new Date().toISOString(),
+      },
     };
-    await admin
-      .from("postulaciones")
-      .update({ match_score: r.score, ia_analisis })
-      .eq("id", c.postulacion_id);
-    ranking.push({ postulacion_id: c.postulacion_id, nombre: c.nombre, ...r });
+  });
+  if (filasPorGuardar.length > 0) {
+    await admin.from("postulaciones").upsert(filasPorGuardar, { onConflict: "id" });
   }
+
+  const ranking = candidatos.map((c) => ({
+    postulacion_id: c.postulacion_id,
+    nombre: c.nombre,
+    ...resultados[c.postulacion_id],
+  }));
 
   ranking.sort((a, b) => b.score - a.score);
   return NextResponse.json({ ranking, mensaje });

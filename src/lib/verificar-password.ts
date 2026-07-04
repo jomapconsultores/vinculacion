@@ -9,6 +9,7 @@ export async function passwordCorrecta(email: string, password: string): Promise
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ email, password }),
+      signal: AbortSignal.timeout(8_000),
     });
     return r.ok;
   } catch {

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { consultarSenescyt } from "@/lib/senescyt";
+import { consultarSenescyt, claveTituloInstitucion } from "@/lib/senescyt";
 
 // Importa los títulos SENESCYT del usuario autenticado a su sección de educación (sin duplicar).
 export async function POST() {
@@ -11,15 +11,19 @@ export async function POST() {
   const { data: prof } = await supabase.from("profiles").select("cedula").eq("id", user.id).maybeSingle();
   if (!prof?.cedula) return NextResponse.json({ error: "Tu perfil no tiene cédula registrada." }, { status: 400 });
 
-  const titulos = await consultarSenescyt(prof.cedula);
+  let titulos;
+  try {
+    titulos = await consultarSenescyt(prof.cedula);
+  } catch {
+    return NextResponse.json({ error: "No se pudo consultar el registro de títulos. Intenta de nuevo." }, { status: 502 });
+  }
   if (titulos.length === 0) return NextResponse.json({ importados: 0 });
 
   const { data: exEdu } = await supabase.from("educacion").select("titulo, institucion").eq("profile_id", user.id);
-  const norm = (v?: string | null) => (v || "").trim().toLowerCase();
-  const existentes = new Set((exEdu ?? []).map((e: any) => `${norm(e.titulo)}|${norm(e.institucion)}`));
+  const existentes = new Set((exEdu ?? []).map((e: any) => claveTituloInstitucion(e.titulo, e.institucion)));
 
   const nuevos = titulos
-    .filter((t) => !existentes.has(`${norm(t.titulo)}|${norm(t.institucion)}`))
+    .filter((t) => !existentes.has(claveTituloInstitucion(t.titulo, t.institucion)))
     .map((t) => ({
       profile_id: user.id,
       titulo: t.titulo,

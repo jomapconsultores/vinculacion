@@ -14,9 +14,19 @@ type Analisis = {
   fuente: "ia" | "heuristica";
 };
 
-export function PostularPanel({ empleoId, analisisInicial }: { empleoId: number; analisisInicial: Analisis | null }) {
+export function PostularPanel({
+  empleoId,
+  analisisInicial,
+  yaEnviada,
+}: {
+  empleoId: number;
+  analisisInicial: Analisis | null;
+  yaEnviada: boolean;
+}) {
   const [analisis, setAnalisis] = useState<Analisis | null>(analisisInicial);
   const [loading, setLoading] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+  const [enviada, setEnviada] = useState(yaEnviada);
   const [error, setError] = useState<string | null>(null);
 
   async function evaluar() {
@@ -26,7 +36,7 @@ export function PostularPanel({ empleoId, analisisInicial }: { empleoId: number;
       const r = await fetch("/api/postular", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ empleoId }),
+        body: JSON.stringify({ empleoId, accion: "evaluar" }),
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "Error");
@@ -35,6 +45,25 @@ export function PostularPanel({ empleoId, analisisInicial }: { empleoId: number;
       setError(e.message);
     }
     setLoading(false);
+  }
+
+  async function confirmar() {
+    setConfirmando(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/postular", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ empleoId, accion: "confirmar" }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Error");
+      setAnalisis(j.analisis);
+      setEnviada(true);
+    } catch (e: any) {
+      setError(e.message);
+    }
+    setConfirmando(false);
   }
 
   const color = analisis
@@ -116,10 +145,17 @@ export function PostularPanel({ empleoId, analisisInicial }: { empleoId: number;
           ) : null}
 
           <div className="flex items-center gap-3 border-t border-slate-100 pt-4">
-            <button className="btn-primary" disabled={!analisis.apto} onClick={evaluar}>
-              <Send className="h-4 w-4" /> {analisis.apto ? "Postulación enviada" : "Habilítate para postular"}
-            </button>
-            {!analisis.apto && (
+            {enviada ? (
+              <button className="btn-primary" disabled>
+                <CheckCircle2 className="h-4 w-4" /> Postulación enviada
+              </button>
+            ) : (
+              <button className="btn-primary" disabled={!analisis.apto || confirmando} onClick={confirmar}>
+                {confirmando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {analisis.apto ? "Confirmar y enviar postulación" : "Habilítate para postular"}
+              </button>
+            )}
+            {!analisis.apto && !enviada && (
               <span className="text-sm text-slate-500">Completa los cursos avalados para habilitar la postulación.</span>
             )}
           </div>

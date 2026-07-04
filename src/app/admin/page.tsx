@@ -51,7 +51,7 @@ export default async function AdminPanel() {
 
   const { data: posts } = await supabase
     .from("postulaciones")
-    .select("profile_id, estado");
+    .select("profile_id");
 
   const indicadores: Indicadores = (ind as Indicadores) ?? {
     total_graduados: 0,
@@ -63,15 +63,14 @@ export default async function AdminPanel() {
     servicios_activos: 0,
   };
 
-  // Trazabilidad longitudinal: personas distintas en cada etapa del embudo
+  // Trazabilidad longitudinal: personas distintas por etapa. "Contratados"
+  // viene de v_indicadores_globales (ya en personas distintas, ver
+  // 0017_unificar_contratados.sql) para no divergir del resto del panel;
+  // "postulantes" sí se calcula aquí porque la vista no lo expone.
   const postulantes = new Set(
     (posts ?? []).map((p: { profile_id: string }) => p.profile_id),
   ).size;
-  const contratadosPersonas = new Set(
-    (posts ?? [])
-      .filter((p: { estado: string }) => p.estado === "contratado")
-      .map((p: { profile_id: string }) => p.profile_id),
-  ).size;
+  const contratadosPersonas = indicadores.contratados;
 
   const embudo = [
     {
