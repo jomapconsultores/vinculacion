@@ -17,9 +17,21 @@ export function DocumentosPorCategoria({
   onDescargar: (doc: Documento) => void;
   onEliminar?: (doc: Documento) => void;
 }) {
+  // Dentro de cada carpeta, los documentos más recientes (según la fecha que
+  // extrajo la IA) van primero; los que no tienen fecha extraída se ordenan
+  // al final, usando created_at como criterio de respaldo.
+  function compararDocs(a: Documento, b: Documento) {
+    if (a.fecha_documento && b.fecha_documento) {
+      return a.fecha_documento < b.fecha_documento ? 1 : a.fecha_documento > b.fecha_documento ? -1 : 0;
+    }
+    if (a.fecha_documento && !b.fecha_documento) return -1;
+    if (!a.fecha_documento && b.fecha_documento) return 1;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  }
+
   const grupos = DOCUMENTOS_CATEGORIAS.map((c) => ({
     ...c,
-    docs: documentos.filter((d) => d.categoria === c.value),
+    docs: documentos.filter((d) => d.categoria === c.value).sort(compararDocs),
   })).filter((g) => g.docs.length > 0);
 
   if (grupos.length === 0) return null;

@@ -25,9 +25,35 @@ export const DOCUMENTOS_TIPOS_PERMITIDOS = [
   "image/jpeg",
   "image/png",
   "image/webp",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  "text/csv",
 ];
 
+// Extensiones aceptadas cuando el navegador no reporta un `type` MIME (o lo
+// reporta genérico); se valida contra el nombre de archivo como respaldo.
+export const DOCUMENTOS_EXTENSIONES_PERMITIDAS = /\.(pdf|jpe?g|png|webp|docx|xlsx|xls|csv)$/i;
+
 export const DOCUMENTOS_TAMANO_MAX = 15 * 1024 * 1024; // 15MB
+
+// Mensaje de error compartido para tipo de archivo no admitido: los tres
+// endpoints de subida (repositorio, experiencia, cursos) validan la misma
+// lista y deben mostrar el mismo texto.
+export const DOCUMENTOS_TIPO_ERROR = "Solo se aceptan PDF, JPG, PNG, WEBP, DOCX, XLSX, XLS o CSV.";
+
+const EXTENSIONES_SEGURAS = /^(pdf|jpe?g|png|webp|docx|xlsx|xls|csv)$/i;
+
+// Deriva una extensión segura para construir la ruta del objeto en Storage.
+// No confía en el nombre de archivo del cliente: solo devuelve la extensión
+// si coincide EXACTAMENTE con la whitelist de formatos soportados (sin `/`
+// ni `..` ni ningún otro carácter), evitando así construir una key de
+// Storage con segmentos de path-traversal a partir de un nombre arbitrario.
+export function extensionSegura(nombreArchivo: string): string {
+  const m = nombreArchivo.match(/\.([a-zA-Z0-9]{1,8})$/);
+  const ext = m?.[1]?.toLowerCase() ?? "";
+  return EXTENSIONES_SEGURAS.test(ext) ? ext : "bin";
+}
 
 export function categoriaLabel(categoria: string): string {
   return DOCUMENTOS_CATEGORIAS.find((c) => c.value === categoria)?.label ?? categoria;

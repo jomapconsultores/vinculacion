@@ -1,10 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Trash2, Loader2, BookOpen, CheckCircle2, AlertCircle } from "lucide-react";
+import { useRef, useState } from "react";
+import { Plus, Trash2, Loader2, BookOpen, CheckCircle2, AlertCircle, Upload, AlertTriangle } from "lucide-react";
 
 type Curso = { id?: number; nombre: string; institucion?: string; fecha?: string; area_nombre?: string; fuente?: string };
 type Estado = "idle" | "guardando" | "guardado" | "error";
+
+const ACCEPT_DOC =
+  ".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx,.xls,.csv,application/pdf,image/jpeg,image/png,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv";
+
+function ordenarPorFecha(items: Curso[]): Curso[] {
+  return [...items].sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
+}
 
 async function api(body: any): Promise<any> {
   const r = await fetch("/api/perfil", {
@@ -19,6 +26,10 @@ async function api(body: any): Promise<any> {
 export function CursosEditor({ cursos }: { cursos: Curso[] }) {
   const [items, setItems] = useState<Curso[]>(cursos);
   const [estado, setEstado] = useState<Estado>("idle");
+  const [subiendoDoc, setSubiendoDoc] = useState(false);
+  const [errorDoc, setErrorDoc] = useState<string | null>(null);
+  const [arrastrando, setArrastrando] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   async function guardar(fn: () => Promise<void>) {
     setEstado("guardando");
@@ -29,7 +40,7 @@ export function CursosEditor({ cursos }: { cursos: Curso[] }) {
   async function add() {
     await guardar(async () => {
       const j = await api({ accion: "crear", tabla: "cursos_persona", datos: { nombre: "", fuente: "manual" } });
-      if (j.fila) setItems([...items, j.fila as Curso]);
+      if (j.fila) setItems((prev) => [...prev, j.fila as Curso]);
     });
   }
   function save(c: Curso) {
@@ -40,6 +51,39 @@ export function CursosEditor({ cursos }: { cursos: Curso[] }) {
     if (!id) return;
     await guardar(() => api({ accion: "eliminar", tabla: "cursos_persona", id }));
     setItems(items.filter((x) => x.id !== id));
+  }
+
+  async function subirDocumento(archivo: File) {
+    setSubiendoDoc(true);
+    setErrorDoc(null);
+    try {
+      const fd = new FormData();
+      fd.append("archivo", archivo);
+      const r = await fetch("/api/perfil/cursos/analizar", { method: "POST", body: fd });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setErrorDoc(j.error || "No se pudo analizar el documento.");
+        return;
+      }
+      if (j.fila) setItems((prev) => ordenarPorFecha([j.fila as Curso, ...prev]));
+    } catch {
+      setErrorDoc("No se pudo analizar el documento.");
+    } finally {
+      setSubiendoDoc(false);
+    }
+  }
+
+  function onDrop(ev: React.DragEvent<HTMLDivElement>) {
+    ev.preventDefault();
+    setArrastrando(false);
+    const archivo = ev.dataTransfer.files?.[0];
+    if (archivo) void subirDocumento(archivo);
+  }
+
+  function onSeleccionar(ev: React.ChangeEvent<HTMLInputElement>) {
+    const archivo = ev.target.files?.[0];
+    if (archivo) void subirDocumento(archivo);
+    ev.target.value = "";
   }
 
   return (
@@ -63,6 +107,40 @@ export function CursosEditor({ cursos }: { cursos: Curso[] }) {
       <p className="mt-1 text-sm text-slate-500">
         Cursos y capacitaciones (se llenan al consultar SENESCYT o los agregas manualmente).
       </p>
+
+      <div
+        className={`mt-4 rounded-xl border-2 border-dashed p-6 text-center text-sm transition ${
+          arrastrando ? "border-blue-500 bg-blue-50" : "border-slate-300 hover:border-blue-400"
+        }`}
+        onDragOver={(ev) => { ev.preventDefault(); setArrastrando(true); }}
+        onDragLeave={() => setArrastrando(false)}
+        onDrop={onDrop}
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          className="hidden"
+          accept={ACCEPT_DOC}
+          onChange={onSeleccionar}
+        />
+        <button
+          type="button"
+          className="flex w-full flex-col items-center justify-center gap-2 text-slate-500"
+          onClick={() => inputRef.current?.click()}
+          disabled={subiendoDoc}
+        >
+          {subiendoDoc ? <Loader2 className="h-6 w-6 animate-spin" /> : <Upload className="h-6 w-6 text-slate-400" />}
+          {subiendoDoc
+            ? "Analizando documento…"
+            : "Arrastra un certificado de curso, seminario o taller para agregarlo automáticamente"}
+        </button>
+        {errorDoc && (
+          <p className="mt-3 flex items-center gap-2 rounded-lg bg-red-50 p-2 text-sm text-red-600">
+            <AlertTriangle className="h-4 w-4" /> {errorDoc}
+          </p>
+        )}
+      </div>
+
       <div className="mt-4 space-y-4">
         {items.length === 0 && <p className="text-sm text-slate-400">Aún no tienes cursos registrados.</p>}
         {items.map((c, i) => (

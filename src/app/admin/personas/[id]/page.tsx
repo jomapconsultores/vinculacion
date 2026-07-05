@@ -24,7 +24,7 @@ export default async function PersonaDetalle({ params }: { params: { id: string 
       .maybeSingle(),
     supabase
       .from("documentos_personales")
-      .select("id, categoria, nombre_original, mime_type, tamano_bytes, created_at")
+      .select("id, categoria, nombre_original, mime_type, tamano_bytes, fecha_documento, created_at")
       .eq("profile_id", params.id)
       .order("created_at", { ascending: false }),
   ]);

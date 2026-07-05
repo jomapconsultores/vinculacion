@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Trash2, Save, Loader2, Briefcase, GraduationCap, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
+import { useRef, useState } from "react";
+import { Plus, Trash2, Save, Loader2, Briefcase, GraduationCap, Sparkles, CheckCircle2, AlertCircle, Upload, AlertTriangle } from "lucide-react";
 
 type Exp = { id?: number; empresa: string; cargo: string; ciudad?: string; fecha_inicio?: string; fecha_fin?: string; actual?: boolean; descripcion?: string };
 type Edu = { id?: number; institucion: string; titulo: string; nivel?: string; fecha_inicio?: string; fecha_fin?: string; area_nombre?: string | null; area_codigo?: string | null };
@@ -42,6 +42,10 @@ export function PerfilEditor({
   const [habs, setHabs] = useState<Hab[]>(habilidades);
   const [savingInfo, setSavingInfo] = useState(false);
   const [estado, setEstado] = useState<Estado>("idle");
+  const [subiendoExp, setSubiendoExp] = useState(false);
+  const [errorExp, setErrorExp] = useState<string | null>(null);
+  const [dragExp, setDragExp] = useState(false);
+  const expFileRef = useRef<HTMLInputElement>(null);
 
   // Indicador global de guardado automático
   async function autoguardar(fn: () => Promise<void>) {
@@ -69,7 +73,7 @@ export function PerfilEditor({
 
   async function addExp() {
     const j = await api({ accion: "crear", tabla: "experiencia_laboral", datos: { empresa: "", cargo: "" } });
-    if (j.fila) setExps([...exps, j.fila as Exp]);
+    if (j.fila) setExps((prev) => [...prev, j.fila as Exp]);
   }
   function saveExp(e: Exp) {
     if (!e.id) return;
@@ -81,9 +85,36 @@ export function PerfilEditor({
     setExps(exps.filter((x) => x.id !== id));
   }
 
+  async function analizarExpDoc(file: File) {
+    setErrorExp(null);
+    setSubiendoExp(true);
+    try {
+      const fd = new FormData();
+      fd.append("archivo", file);
+      const r = await fetch("/api/perfil/experiencia/analizar", { method: "POST", body: fd });
+      const j = await r.json();
+      if (!r.ok || !j.ok || !j.fila) {
+        throw new Error(j.error || "No se pudo analizar el documento.");
+      }
+      setExps((prev) =>
+        [j.fila as Exp, ...prev].sort((a, b) => (b.fecha_inicio || "").localeCompare(a.fecha_inicio || ""))
+      );
+    } catch (e: any) {
+      setErrorExp(e.message || "No se pudo analizar el documento.");
+    }
+    setSubiendoExp(false);
+    if (expFileRef.current) expFileRef.current.value = "";
+  }
+
+  function onExpFiles(files: FileList | null) {
+    const file = files?.[0];
+    if (!file) return;
+    analizarExpDoc(file);
+  }
+
   async function addEdu() {
     const j = await api({ accion: "crear", tabla: "educacion", datos: { institucion: "", titulo: "" } });
-    if (j.fila) setEdus([...edus, j.fila as Edu]);
+    if (j.fila) setEdus((prev) => [...prev, j.fila as Edu]);
   }
   function saveEdu(e: Edu) {
     if (!e.id) return;
@@ -97,7 +128,7 @@ export function PerfilEditor({
 
   async function addHab() {
     const j = await api({ accion: "crear", tabla: "habilidades", datos: { nombre: "", nivel: 3 } });
-    if (j.fila) setHabs([...habs, j.fila as Hab]);
+    if (j.fila) setHabs((prev) => [...prev, j.fila as Hab]);
   }
   function saveHab(h: Hab) {
     if (!h.id) return;
@@ -159,6 +190,49 @@ export function PerfilEditor({
           <h2 className="flex items-center gap-2 font-semibold text-slate-900"><Briefcase className="h-5 w-5 text-teal-600" /> Experiencia laboral</h2>
           <button className="btn-outline" onClick={addExp}><Plus className="h-4 w-4" /> Agregar</button>
         </div>
+
+        <div
+          onClick={() => !subiendoExp && expFileRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            if (!subiendoExp) setDragExp(true);
+          }}
+          onDragLeave={() => setDragExp(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragExp(false);
+            if (!subiendoExp) onExpFiles(e.dataTransfer.files);
+          }}
+          className={`mt-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 text-center text-sm transition ${
+            dragExp ? "border-blue-500 bg-blue-50" : "border-slate-300 hover:border-blue-400"
+          } ${subiendoExp ? "pointer-events-none opacity-60" : ""}`}
+        >
+          {subiendoExp ? (
+            <span className="flex items-center justify-center gap-2 text-slate-500">
+              <Loader2 className="h-4 w-4 animate-spin" /> Analizando documento…
+            </span>
+          ) : (
+            <>
+              <Upload className="h-6 w-6 text-slate-400" />
+              <span className="text-slate-500">
+                Arrastra un certificado o contrato para crear la experiencia automáticamente
+              </span>
+            </>
+          )}
+        </div>
+        <input
+          ref={expFileRef}
+          type="file"
+          accept="application/pdf,image/jpeg,image/png,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+          className="hidden"
+          onChange={(e) => onExpFiles(e.target.files)}
+        />
+        {errorExp && (
+          <p className="mt-3 flex items-center gap-2 rounded-lg bg-red-50 p-2 text-sm text-red-600">
+            <AlertTriangle className="h-4 w-4" /> {errorExp}
+          </p>
+        )}
+
         <div className="mt-4 space-y-4">
           {exps.length === 0 && <p className="text-sm text-slate-400">Aún no agregas experiencia.</p>}
           {exps.map((e, i) => (

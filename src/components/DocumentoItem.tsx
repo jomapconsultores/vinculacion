@@ -9,6 +9,7 @@ export type Documento = {
   nombre_original: string;
   mime_type: string | null;
   tamano_bytes: number | null;
+  fecha_documento: string | null;
   created_at: string;
 };
 
@@ -16,6 +17,20 @@ function tamanoLegible(bytes: number | null) {
   if (!bytes) return "";
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// `fecha_documento` viene de una columna `date` (sin hora), serializada como
+// "YYYY-MM-DD". `new Date("YYYY-MM-DD")` la interpreta como medianoche UTC,
+// lo que en zonas horarias negativas (ej. Ecuador, UTC-5) la corre un día
+// hacia atrás al mostrarla en hora local. Por eso parseamos sus componentes
+// como fecha local en vez de dejar que `Date` la trate como UTC.
+// `created_at` sí es un timestamptz completo y no sufre este problema.
+function formatearFechaDocumento(doc: Documento): string {
+  if (doc.fecha_documento) {
+    const [anio, mes, dia] = doc.fecha_documento.split("-").map(Number);
+    return new Date(anio, mes - 1, dia).toLocaleDateString("es-EC");
+  }
+  return new Date(doc.created_at).toLocaleDateString("es-EC");
 }
 
 // Fila de un documento, compartida por el repositorio del propio usuario
@@ -38,7 +53,7 @@ export function DocumentoItem({
           <p className="truncate text-sm font-medium text-slate-800">{doc.nombre_original}</p>
           <p className="text-xs text-slate-400">
             {categoriaLabel(doc.categoria)} · {tamanoLegible(doc.tamano_bytes)} ·{" "}
-            {new Date(doc.created_at).toLocaleDateString("es-EC")}
+            {formatearFechaDocumento(doc)}
           </p>
         </div>
       </div>
