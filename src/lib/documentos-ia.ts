@@ -23,11 +23,21 @@ export type AnalisisCurso = {
   area_nombre: string | null;
 };
 
+export type AnalisisPublicacion = {
+  titulo: string;
+  revista: string | null;
+  tipo: "articulo" | "ponencia" | "libro" | "capitulo_libro" | "otro";
+  fecha: string | null; // YYYY-MM-DD
+  coautores: string | null;
+  enlace: string | null;
+};
+
 export type AnalisisDocumento = {
   categoria: DocumentoCategoria;
   fecha_documento: string | null; // YYYY-MM-DD
   experiencia: AnalisisExperiencia | null;
   curso: AnalisisCurso | null;
+  publicacion: AnalisisPublicacion | null;
 };
 
 const CATEGORIAS_VALIDAS = new Set<string>(DOCUMENTOS_CATEGORIAS.map((c) => c.value));
@@ -37,11 +47,14 @@ function fechaValida(v: unknown): string | null {
   return typeof v === "string" && FECHA_RE.test(v) ? v : null;
 }
 
+const TIPOS_PUBLICACION = new Set(["articulo", "ponencia", "libro", "capitulo_libro", "otro"]);
+
 const ANALISIS_VACIO: AnalisisDocumento = {
   categoria: "otro",
   fecha_documento: null,
   experiencia: null,
   curso: null,
+  publicacion: null,
 };
 
 // Analiza un documento (PDF, imagen, Word o Excel) con OCR + IA: sugiere en
@@ -66,13 +79,15 @@ export async function analizarDocumentoIA(archivo: File): Promise<AnalisisDocume
   "categoria": string,
   "fecha_documento": string|null,
   "experiencia": {"empresa":string,"cargo":string,"ciudad":string|null,"fecha_inicio":string|null,"fecha_fin":string|null,"actual":boolean,"descripcion":string|null} | null,
-  "curso": {"nombre":string,"institucion":string|null,"fecha":string|null,"area_nombre":string|null} | null
+  "curso": {"nombre":string,"institucion":string|null,"fecha":string|null,"area_nombre":string|null} | null,
+  "publicacion": {"titulo":string,"revista":string|null,"tipo":"articulo"|"ponencia"|"libro"|"capitulo_libro"|"otro","fecha":string|null,"coautores":string|null,"enlace":string|null} | null
 }
 Reglas:
 - "categoria": EXACTAMENTE uno de estos valores (sin inventar otros): ${categorias}.
-- "fecha_documento": la fecha más relevante del documento (emisión, finalización, firma del contrato, etc.) en formato YYYY-MM-DD. Si no hay una fecha clara e inequívoca, usa null. Nunca inventes ni aproximes una fecha.
+- "fecha_documento": la fecha más relevante del documento (emisión, finalización, firma del contrato, publicación, etc.) en formato YYYY-MM-DD. Si no hay una fecha clara e inequívoca, usa null. Nunca inventes ni aproximes una fecha.
 - "experiencia": completa este objeto SOLO si el documento es un certificado laboral, contrato, acción de personal o similar que demuestre EXPERIENCIA LABORAL (profesional, académica o administrativa). "fecha_inicio"/"fecha_fin" en YYYY-MM-DD; "fecha_fin" null y "actual":true si el cargo sigue vigente. Si no aplica, usa null (no lo completes a medias).
 - "curso": completa este objeto SOLO si el documento es un certificado de CURSO, SEMINARIO, TALLER, CONGRESO O CAPACITACIÓN. Si no aplica, usa null.
+- "publicacion": completa este objeto SOLO si el documento es un ARTÍCULO CIENTÍFICO, PAPER, PONENCIA, LIBRO O CAPÍTULO DE LIBRO publicado (no un simple certificado de asistencia). "tipo" EXACTAMENTE uno de "articulo","ponencia","libro","capitulo_libro","otro". "coautores": lista de coautores separados por coma si aparecen, si no null. "enlace": DOI o URL si aparece en el texto, si no null. Si no aplica, usa null.
 - No inventes datos que no estén explícitos en el texto. Si un campo puntual no aparece, usa null en ese campo (pero completa el resto del objeto si el documento sí corresponde a esa categoría).`;
 
   try {
@@ -104,6 +119,18 @@ Reglas:
             institucion: resultado.curso.institucion || null,
             fecha: fechaValida(resultado.curso.fecha),
             area_nombre: resultado.curso.area_nombre || null,
+          }
+        : null,
+      publicacion: resultado?.publicacion
+        ? {
+            titulo: String(resultado.publicacion.titulo || "").trim() || "—",
+            revista: resultado.publicacion.revista || null,
+            tipo: TIPOS_PUBLICACION.has(String(resultado.publicacion.tipo))
+              ? (resultado.publicacion.tipo as AnalisisPublicacion["tipo"])
+              : "otro",
+            fecha: fechaValida(resultado.publicacion.fecha),
+            coautores: resultado.publicacion.coautores || null,
+            enlace: resultado.publicacion.enlace || null,
           }
         : null,
     };
