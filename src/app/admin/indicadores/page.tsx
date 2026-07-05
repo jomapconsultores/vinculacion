@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { TrendingUp, Award, Send, HeartHandshake, ShieldCheck } from "lucide-react";
+import { TrendingUp, Award, Send, HeartHandshake, ShieldCheck, Info } from "lucide-react";
 
 type Indicadores = {
   total_graduados: number;
@@ -73,6 +73,57 @@ export default async function IndicadoresPage() {
           real sobre la base de datos institucional.
         </p>
       </header>
+
+      {/* Guía de lectura: explicación siempre visible para quienes ven el
+          tablero (presentaciones, comité de acreditación, etc.), no un
+          tooltip oculto tras un hover/click. */}
+      <div className="card border-violet-100 bg-violet-50/40 p-5">
+        <h2 className="flex items-center gap-2 font-semibold text-violet-900">
+          <Info className="h-4 w-4" /> Cómo leer este tablero
+        </h2>
+        <dl className="mt-3 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+          <div>
+            <dt className="text-sm font-medium text-slate-800">Tasa de inserción laboral</dt>
+            <dd className="text-sm text-slate-600">
+              Porcentaje de graduados registrados que consiguieron empleo a través de la
+              plataforma (contratados ÷ total de graduados).
+            </dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-slate-800">Competencias avaladas</dt>
+            <dd className="text-sm text-slate-600">
+              Competencias certificadas oficialmente por la universidad — no autodeclaradas:
+              pasaron por un aval institucional (p. ej. al aprobar un curso de educación continua).
+            </dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-slate-800">Postulaciones registradas</dt>
+            <dd className="text-sm text-slate-600">
+              Total de postulaciones a empleo hechas en la plataforma. Mide actividad de uso,
+              no éxito de colocación.
+            </dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-slate-800">Ejecución promedio de servicios</dt>
+            <dd className="text-sm text-slate-600">
+              De los servicios comunitarios/institucionales que monitorea la universidad, qué
+              porcentaje de las horas docentes planificadas se ejecutó realmente.
+            </dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="text-sm font-medium text-slate-800">Distribución de postulaciones por estado</dt>
+            <dd className="text-sm text-slate-600">
+              El embudo completo del proceso de inserción laboral: en qué etapa está cada
+              postulación (borrador, enviada, en revisión, preseleccionado, contratado o
+              rechazado), para identificar dónde se atascan.
+            </dd>
+          </div>
+        </dl>
+        <p className="mt-3 text-xs text-violet-700">
+          Nota: si los números son bajos, es porque esta es la base de datos de demostración del
+          proyecto, no cifras reales de una institución en producción.
+        </p>
+      </div>
 
       {/* Indicadores destacados */}
       <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
