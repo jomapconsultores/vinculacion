@@ -3,10 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { HeartHandshake, LogOut, Menu, X, Settings } from "lucide-react";
+import { HeartHandshake, LogOut, Menu, X, Settings, ChevronDown, Repeat } from "lucide-react";
 import { iniciales } from "@/lib/utils";
 
 export type NavItem = { href: string; label: string; icon: React.ReactNode };
+export type RolDisponible = { rol: string; label: string };
 
 function Marca() {
   return (
@@ -19,24 +20,110 @@ function Marca() {
   );
 }
 
+function rutaParaRol(rol: string) {
+  return rol === "empleador" ? "/empleador" : "/dashboard";
+}
+
+function SelectorRol({ rol, rolesDisponibles }: { rol: string; rolesDisponibles: RolDisponible[] }) {
+  const [open, setOpen] = useState(false);
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (rolesDisponibles.length < 2) return null;
+
+  // `rol` puede venir como etiqueta de despliegue ("Estudiante") o como valor
+  // crudo ("empleador"/"admin"), según el layout que llame a <Sidebar>. Se
+  // compara sin distinguir mayúsculas para saber cuál es el rol activo.
+  const esActivo = (candidato: string) => candidato.toLowerCase() === rol.toLowerCase();
+
+  async function elegir(destino: RolDisponible) {
+    if (esActivo(destino.rol) || cargando) return;
+    setCargando(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/cuenta/cambiar-rol", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rol: destino.rol }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        setError(data.error || "No se pudo cambiar de rol.");
+        setCargando(false);
+        return;
+      }
+      // Recarga completa: el servidor debe reevaluar requireProfile()/getSessionProfile()
+      // con el rol nuevo, no una navegación de cliente.
+      window.location.href = rutaParaRol(destino.rol);
+    } catch {
+      setError("No se pudo cambiar de rol.");
+      setCargando(false);
+    }
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        disabled={cargando}
+        className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+        aria-haspopup="true"
+        aria-expanded={open}
+      >
+        <Repeat className="h-3.5 w-3.5" />
+        {cargando ? "Cambiando…" : "Cambiar rol"}
+        <ChevronDown className="h-3.5 w-3.5" />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
+            {rolesDisponibles.map((r) => (
+              <button
+                key={r.rol}
+                type="button"
+                disabled={esActivo(r.rol) || cargando}
+                onClick={() => elegir(r)}
+                className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-sm font-medium transition ${
+                  esActivo(r.rol) ? "cursor-default bg-blue-50 text-blue-900" : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                {r.label}
+              </button>
+            ))}
+            {error && <p className="px-3 py-1.5 text-xs text-red-600">{error}</p>}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function Contenido({
   items,
   nombre,
   apellido,
   rol,
+  rolesDisponibles,
   onNavigate,
 }: {
   items: NavItem[];
   nombre: string;
   apellido: string;
   rol: string;
+  rolesDisponibles?: RolDisponible[];
   onNavigate?: () => void;
 }) {
   const path = usePathname();
   return (
     <>
-      <div className="hidden items-center border-b border-slate-200 px-5 py-4 lg:flex">
+      <div className="hidden items-center justify-between border-b border-slate-200 px-5 py-4 lg:flex">
         <Marca />
+        {rolesDisponibles && rolesDisponibles.length > 1 && (
+          <SelectorRol rol={rol} rolesDisponibles={rolesDisponibles} />
+        )}
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
@@ -85,21 +172,34 @@ function Contenido({
   );
 }
 
-export function Sidebar(props: { items: NavItem[]; nombre: string; apellido: string; rol: string }) {
+export function Sidebar(props: {
+  items: NavItem[];
+  nombre: string;
+  apellido: string;
+  rol: string;
+  rolesDisponibles?: RolDisponible[];
+}) {
   const [open, setOpen] = useState(false);
+  const { rol, rolesDisponibles } = props;
 
   return (
     <>
-      {/* Barra superior (solo móvil) */}
+      {/* Barra superior (solo móvil): logo a la izquierda, selector de rol +
+          menú agrupados a la derecha (misma esquina que en escritorio). */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
         <Marca />
-        <button
-          onClick={() => setOpen(true)}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
-          aria-label="Abrir menú"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          {rolesDisponibles && rolesDisponibles.length > 1 && (
+            <SelectorRol rol={rol} rolesDisponibles={rolesDisponibles} />
+          )}
+          <button
+            onClick={() => setOpen(true)}
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
+            aria-label="Abrir menú"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
       </header>
 
       {/* Barra lateral fija (escritorio) */}
@@ -122,6 +222,16 @@ export function Sidebar(props: { items: NavItem[]; nombre: string; apellido: str
                 <X className="h-5 w-5" />
               </button>
             </div>
+            {/* El selector también vive en la barra superior móvil (fuera de
+                este cajón), pero mientras el cajón está abierto su overlay de
+                fondo cubre esa barra por encima (z-40 vs z-30). Se repite aquí
+                dentro para que "Cambiar rol" siga siendo alcanzable sin tener
+                que cerrar el menú primero. */}
+            {rolesDisponibles && rolesDisponibles.length > 1 && (
+              <div className="border-b border-slate-200 px-5 py-3">
+                <SelectorRol rol={rol} rolesDisponibles={rolesDisponibles} />
+              </div>
+            )}
             <Contenido {...props} onNavigate={() => setOpen(false)} />
           </aside>
         </div>
