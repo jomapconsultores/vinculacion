@@ -22,18 +22,31 @@ export type CandidatoSugerido = {
 };
 
 // Empleos recomendados para un graduado (excluye a los que ya postuló).
+// `empleosPrefetch`/`postPrefetch` permiten reutilizar filas que el llamador
+// ya haya obtenido (p.ej. la página de empleos), evitando volver a consultarlas.
 export async function empleosRecomendados(
   supabase: SupabaseClient,
   profileId: string,
-  limite = 4
+  limite = 4,
+  empleosPrefetch?: any[] | null,
+  postPrefetch?: any[] | null
 ): Promise<EmpleoRecomendado[]> {
-  const [{ data: comps }, { data: post }, { data: empleos }] = await Promise.all([
+  const [{ data: comps }, post, empleos] = await Promise.all([
     supabase.from("competencias_graduado").select("competencia_id, estado").eq("profile_id", profileId),
-    supabase.from("postulaciones").select("empleo_id").eq("profile_id", profileId),
-    supabase
-      .from("empleos")
-      .select("id, titulo, ciudad, modalidad, empresas(nombre), empleo_competencias(competencia_id, requerida)")
-      .eq("estado", "publicado"),
+    postPrefetch !== undefined
+      ? Promise.resolve(postPrefetch)
+      : supabase
+          .from("postulaciones")
+          .select("empleo_id")
+          .eq("profile_id", profileId)
+          .then((r) => r.data),
+    empleosPrefetch !== undefined
+      ? Promise.resolve(empleosPrefetch)
+      : supabase
+          .from("empleos")
+          .select("id, titulo, ciudad, modalidad, empresas(nombre), empleo_competencias(competencia_id, requerida)")
+          .eq("estado", "publicado")
+          .then((r) => r.data),
   ]);
 
   const avaladas = new Set<number>();
@@ -67,17 +80,16 @@ export async function empleosRecomendados(
 }
 
 // Candidatos sugeridos para un empleo (graduados que aún no postulan).
+// `requeridas` son los competencia_id ya marcados como requeridos para el
+// empleo; el llamador (que típicamente ya cargó empleo_competencias) los
+// pasa para evitar volver a consultar la tabla empleos.
 export async function candidatosSugeridos(
   supabase: SupabaseClient,
   empleoId: number,
+  requeridas: number[],
   limite = 5
 ): Promise<CandidatoSugerido[]> {
-  const { data: empleo } = await supabase
-    .from("empleos")
-    .select("empleo_competencias(competencia_id, requerida)")
-    .eq("id", empleoId)
-    .maybeSingle();
-  const req = ((empleo as any)?.empleo_competencias ?? []).filter((x: any) => x.requerida).map((x: any) => x.competencia_id);
+  const req = requeridas ?? [];
   if (req.length === 0) return [];
 
   const [{ data: cg }, { data: post }] = await Promise.all([

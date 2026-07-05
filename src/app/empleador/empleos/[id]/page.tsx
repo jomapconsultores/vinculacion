@@ -34,7 +34,7 @@ export default async function EmpleoDetallePage({ params }: { params: { id: stri
   const { data: empleo } = await supabase
     .from("empleos")
     .select(
-      "id, empresa_id, titulo, descripcion, ciudad, modalidad, salario_min, salario_max, estado, empleo_competencias(requerida, competencias(nombre))"
+      "id, empresa_id, titulo, descripcion, ciudad, modalidad, salario_min, salario_max, estado, empleo_competencias(competencia_id, requerida, competencias(nombre))"
     )
     .eq("id", empleoId)
     .maybeSingle();
@@ -56,8 +56,12 @@ export default async function EmpleoDetallePage({ params }: { params: { id: stri
   const requeridas: string[] = (e.empleo_competencias ?? [])
     .map((ec: any) => ec.competencias?.nombre)
     .filter(Boolean);
+  const requeridasIds: number[] = (e.empleo_competencias ?? [])
+    .filter((ec: any) => ec.requerida)
+    .map((ec: any) => ec.competencia_id)
+    .filter((id: any) => id != null);
 
-  const sugeridos = await candidatosSugeridos(supabase, empleoId, 5);
+  const sugeridos = await candidatosSugeridos(supabase, empleoId, requeridasIds, 5);
 
   return (
     <div className="space-y-6">
