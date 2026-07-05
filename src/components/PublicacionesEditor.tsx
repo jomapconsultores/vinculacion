@@ -72,7 +72,7 @@ export function PublicacionesEditor({ publicaciones }: { publicaciones: Publicac
   async function del(id?: number) {
     if (!id) return;
     await guardar(() => api({ accion: "eliminar", tabla: "publicaciones_persona", id }));
-    setItems(items.filter((x) => x.id !== id));
+    setItems((prev) => prev.filter((x) => x.id !== id));
   }
 
   async function subirDocumento(archivo: File) {

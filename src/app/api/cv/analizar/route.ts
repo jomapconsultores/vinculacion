@@ -25,8 +25,21 @@ function archivoValido(f: File): string | null {
   const tipo = (f.type || "").toLowerCase();
   const nombre = f.name.toLowerCase();
   const extPermitida = /\.(pdf|jpe?g|png|webp|docx|xlsx|xls|csv)$/.test(nombre);
-  if (tipo && !TIPOS_PERMITIDOS.includes(tipo) && !extPermitida) {
+  const tipoPermitido = tipo ? TIPOS_PERMITIDOS.includes(tipo) : false;
+  if (!tipoPermitido && !extPermitida) {
     return `"${f.name}" no es un tipo de archivo admitido (PDF, Word, Excel o imagen).`;
+  }
+  return null;
+}
+
+const TIPOS_IMAGEN = ["image/jpeg", "image/png", "image/webp"];
+
+function fotoValida(f: File): string | null {
+  if (f.size > TAMANO_MAX) return `"${f.name}" supera el tamaño máximo permitido (10MB).`;
+  const tipo = (f.type || "").toLowerCase();
+  const extPermitida = /\.(jpe?g|png|webp)$/.test(f.name.toLowerCase());
+  if (!TIPOS_IMAGEN.includes(tipo) || !extPermitida) {
+    return `"${f.name}" no es una imagen admitida (JPG, PNG o WEBP).`;
   }
   return null;
 }
@@ -95,14 +108,14 @@ export async function POST(req: Request) {
 
   // 3) Subir foto (opcional) con service role
   let foto_url: string | null = null;
-  if (foto instanceof File && foto.size > 0) {
+  if (foto instanceof File && foto.size > 0 && !fotoValida(foto)) {
     try {
       const admin = createAdminClient();
       const ext = (foto.name.split(".").pop() || "jpg").toLowerCase();
       const path = `${user.id}/foto.${ext}`;
       const buf = Buffer.from(await foto.arrayBuffer());
       await admin.storage.from("cv-fotos").upload(path, buf, {
-        contentType: foto.type || "image/jpeg",
+        contentType: foto.type,
         upsert: true,
       });
       const { data } = admin.storage.from("cv-fotos").getPublicUrl(path);

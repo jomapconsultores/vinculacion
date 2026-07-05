@@ -82,7 +82,7 @@ export function PerfilEditor({
   async function delExp(id?: number) {
     if (!id) return;
     await autoguardar(() => api({ accion: "eliminar", tabla: "experiencia_laboral", id }));
-    setExps(exps.filter((x) => x.id !== id));
+    setExps((prev) => prev.filter((x) => x.id !== id));
   }
 
   async function analizarExpDoc(file: File) {
@@ -123,7 +123,7 @@ export function PerfilEditor({
   async function delEdu(id?: number) {
     if (!id) return;
     await autoguardar(() => api({ accion: "eliminar", tabla: "educacion", id }));
-    setEdus(edus.filter((x) => x.id !== id));
+    setEdus((prev) => prev.filter((x) => x.id !== id));
   }
 
   async function addHab() {
@@ -137,7 +137,7 @@ export function PerfilEditor({
   async function delHab(id?: number) {
     if (!id) return;
     await autoguardar(() => api({ accion: "eliminar", tabla: "habilidades", id }));
-    setHabs(habs.filter((x) => x.id !== id));
+    setHabs((prev) => prev.filter((x) => x.id !== id));
   }
 
   return (

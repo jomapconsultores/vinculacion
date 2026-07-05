@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { limiteExcedido, ipDe } from "@/lib/seguridad";
 
 // Recuperación de contraseña same-origin.
 export async function POST(req: Request) {
@@ -12,6 +13,11 @@ export async function POST(req: Request) {
   const email = body.email?.trim();
   if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
     return NextResponse.json({ error: "Correo inválido" }, { status: 400 });
+  }
+
+  // Límite de tasa: evita spam de correos de recuperación y enumeración de cuentas.
+  if (limiteExcedido(`recuperar:${ipDe(req)}:${email.toLowerCase()}`, 5, 60_000, Date.now())) {
+    return NextResponse.json({ error: "Demasiados intentos. Espera un momento e intenta de nuevo." }, { status: 429 });
   }
 
   const site = process.env.NEXT_PUBLIC_SITE_URL || "https://conecta.pensamiento-libre.org";

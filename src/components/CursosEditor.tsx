@@ -50,7 +50,7 @@ export function CursosEditor({ cursos }: { cursos: Curso[] }) {
   async function del(id?: number) {
     if (!id) return;
     await guardar(() => api({ accion: "eliminar", tabla: "cursos_persona", id }));
-    setItems(items.filter((x) => x.id !== id));
+    setItems((prev) => prev.filter((x) => x.id !== id));
   }
 
   async function subirDocumento(archivo: File) {

@@ -9,6 +9,20 @@ export const maxDuration = 60;
 
 type Extraido = { nombres: string; apellidos: string; cedula: string };
 
+const TAMANO_MAX = 10 * 1024 * 1024; // 10MB
+const TIPOS_PERMITIDOS = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+
+function archivoValido(f: File): string | null {
+  if (f.size > TAMANO_MAX) return "El archivo supera el tamaño máximo permitido (10MB).";
+  const tipo = (f.type || "").toLowerCase();
+  const extPermitida = /\.(pdf|jpe?g|png|webp)$/.test(f.name.toLowerCase());
+  const tipoPermitido = tipo ? TIPOS_PERMITIDOS.includes(tipo) : false;
+  if (!tipoPermitido && !extPermitida) {
+    return "Sube una imagen (JPG, PNG, WEBP) o PDF de tu cédula.";
+  }
+  return null;
+}
+
 // Sube/arrastra la cédula de ciudadanía: OCR + IA extraen nombres y apellidos,
 // verifican contra la cédula de la cuenta y completan el perfil.
 export async function POST(req: Request) {
@@ -32,6 +46,8 @@ export async function POST(req: Request) {
   if (!(archivo instanceof File)) {
     return NextResponse.json({ error: "Sube una imagen o PDF de tu cédula." }, { status: 400 });
   }
+  const errorArchivo = archivoValido(archivo);
+  if (errorArchivo) return NextResponse.json({ error: errorArchivo }, { status: 413 });
 
   // 1) OCR
   let texto = "";
