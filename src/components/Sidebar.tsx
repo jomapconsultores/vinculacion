@@ -6,7 +6,26 @@ import { usePathname } from "next/navigation";
 import { HeartHandshake, LogOut, Menu, X, Settings, ChevronDown, Repeat } from "lucide-react";
 import { iniciales } from "@/lib/utils";
 
-export type NavItem = { href: string; label: string; icon: React.ReactNode };
+// `group` clasifica el ítem dentro de un módulo del menú (ej. "Servicios y
+// prácticas"); los ítems sin `group` se muestran sueltos, antes de los
+// grupos, sin encabezado (ej. "Panel").
+export type NavItem = { href: string; label: string; icon: React.ReactNode; group?: string };
+
+// Agrupa manteniendo el orden de aparición de cada grupo (no alfabético):
+// el primer ítem de un grupo nuevo determina dónde aparece ese bloque.
+function agruparItems(items: NavItem[]): { group: string | null; items: NavItem[] }[] {
+  const bloques: { group: string | null; items: NavItem[] }[] = [];
+  for (const it of items) {
+    const clave = it.group ?? null;
+    const ultimo = bloques[bloques.length - 1];
+    if (ultimo && ultimo.group === clave) {
+      ultimo.items.push(it);
+    } else {
+      bloques.push({ group: clave, items: [it] });
+    }
+  }
+  return bloques;
+}
 export type RolDisponible = { rol: string; label: string };
 
 function Marca() {
@@ -126,23 +145,32 @@ function Contenido({
         )}
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {items.map((it) => {
-          const active = path === it.href || (it.href !== "/dashboard" && it.href !== "/admin" && it.href !== "/empleador" && path.startsWith(it.href));
-          return (
-            <Link
-              key={it.href}
-              href={it.href}
-              onClick={onNavigate}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                active ? "bg-blue-50 text-blue-900" : "text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              {it.icon}
-              {it.label}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 space-y-3 overflow-y-auto p-3">
+        {agruparItems(items).map((bloque, i) => (
+          <div key={bloque.group ?? `_sin-grupo-${i}`} className="space-y-1">
+            {bloque.group && (
+              <p className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {bloque.group}
+              </p>
+            )}
+            {bloque.items.map((it) => {
+              const active = path === it.href || (it.href !== "/dashboard" && it.href !== "/admin" && it.href !== "/empleador" && path.startsWith(it.href));
+              return (
+                <Link
+                  key={it.href}
+                  href={it.href}
+                  onClick={onNavigate}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    active ? "bg-blue-50 text-blue-900" : "text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {it.icon}
+                  {it.label}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       <div className="border-t border-slate-200 p-3">

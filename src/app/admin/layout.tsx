@@ -10,16 +10,20 @@ const LABELS_ROL: Record<string, string> = {
   empleador: "Empleador",
 };
 
+// Agrupados por módulo (mismo concepto que permisos_modulo, ver
+// supabase/migrations/0032_permisos_modulo.sql): el orden del arreglo es el
+// orden visual, y los ítems consecutivos con el mismo `group` se muestran
+// juntos bajo un encabezado en el Sidebar.
 const baseItems: NavItem[] = [
   { href: "/admin", label: "Panel", icon: <LayoutDashboard className="h-4 w-4" /> },
-  { href: "/admin/personas", label: "Personas", icon: <Users className="h-4 w-4" /> },
-  { href: "/admin/empleabilidad", label: "Empleabilidad", icon: <TrendingUp className="h-4 w-4" /> },
-  { href: "/admin/servicios", label: "Servicios", icon: <HeartHandshake className="h-4 w-4" /> },
-  { href: "/admin/practicas", label: "Prácticas", icon: <GraduationCap className="h-4 w-4" /> },
-  { href: "/admin/cursos", label: "Revisión de cursos", icon: <UserCheck className="h-4 w-4" /> },
-  { href: "/admin/indicadores", label: "Indicadores", icon: <BarChart3 className="h-4 w-4" /> },
-  { href: "/admin/encuestas", label: "Encuestas", icon: <ClipboardList className="h-4 w-4" /> },
-  { href: "/admin/psicometria", label: "Psicometría", icon: <Brain className="h-4 w-4" /> },
+  { href: "/admin/personas", label: "Personas", icon: <Users className="h-4 w-4" />, group: "Alumni y graduados" },
+  { href: "/admin/empleabilidad", label: "Empleabilidad", icon: <TrendingUp className="h-4 w-4" />, group: "Inserción laboral" },
+  { href: "/admin/servicios", label: "Servicios", icon: <HeartHandshake className="h-4 w-4" />, group: "Servicios y prácticas" },
+  { href: "/admin/practicas", label: "Prácticas", icon: <GraduationCap className="h-4 w-4" />, group: "Servicios y prácticas" },
+  { href: "/admin/cursos", label: "Revisión de cursos", icon: <UserCheck className="h-4 w-4" />, group: "Servicios y prácticas" },
+  { href: "/admin/indicadores", label: "Indicadores", icon: <BarChart3 className="h-4 w-4" />, group: "Indicadores y acreditación" },
+  { href: "/admin/encuestas", label: "Encuestas", icon: <ClipboardList className="h-4 w-4" />, group: "Indicadores y acreditación" },
+  { href: "/admin/psicometria", label: "Psicometría", icon: <Brain className="h-4 w-4" />, group: "Indicadores y acreditación" },
 ];
 
 // Mapa href -> slug de módulo (permisos_modulo.modulo). "/admin" no tiene
@@ -69,8 +73,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     profile.rol === "admin"
       ? [
           ...itemsVisibles,
-          { href: "/admin/solicitudes", label: "Solicitudes", icon: <UserCheck className="h-4 w-4" /> },
-          { href: "/admin/autoridades", label: "Autoridades", icon: <ShieldCheck className="h-4 w-4" /> },
+          { href: "/admin/solicitudes", label: "Solicitudes", icon: <UserCheck className="h-4 w-4" />, group: "Administración" },
+          { href: "/admin/autoridades", label: "Autoridades", icon: <ShieldCheck className="h-4 w-4" />, group: "Administración" },
         ]
       : itemsVisibles;
 

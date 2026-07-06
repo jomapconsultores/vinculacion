@@ -30,19 +30,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const items: NavItem[] = [
     { href: "/dashboard", label: "Inicio", icon: <LayoutDashboard className="h-4 w-4" /> },
-    { href: "/dashboard/perfil", label: "Mi perfil", icon: <User className="h-4 w-4" /> },
-    { href: "/dashboard/analizar", label: "Analizar mi CV", icon: <ScanText className="h-4 w-4" /> },
-    { href: "/dashboard/cv", label: "Mi CV", icon: <FileText className="h-4 w-4" /> },
+    { href: "/dashboard/perfil", label: "Mi perfil", icon: <User className="h-4 w-4" />, group: "Mi perfil y CV" },
+    { href: "/dashboard/analizar", label: "Analizar mi CV", icon: <ScanText className="h-4 w-4" />, group: "Mi perfil y CV" },
+    { href: "/dashboard/cv", label: "Mi CV", icon: <FileText className="h-4 w-4" />, group: "Mi perfil y CV" },
     // El estudiante ve sus prácticas; el profesional además busca empleo.
     ...(esEstudiante
-      ? [{ href: "/dashboard/practicas", label: "Mis prácticas", icon: <ClipboardCheck className="h-4 w-4" /> }]
+      ? [{ href: "/dashboard/practicas", label: "Mis prácticas", icon: <ClipboardCheck className="h-4 w-4" />, group: "Inserción laboral" }]
       : [
-          { href: "/dashboard/empleos", label: "Empleos", icon: <Briefcase className="h-4 w-4" /> },
-          { href: "/dashboard/competencias", label: "Competencias", icon: <Award className="h-4 w-4" /> },
+          { href: "/dashboard/empleos", label: "Empleos", icon: <Briefcase className="h-4 w-4" />, group: "Inserción laboral" },
+          { href: "/dashboard/competencias", label: "Competencias", icon: <Award className="h-4 w-4" />, group: "Inserción laboral" },
         ]),
-    { href: "/dashboard/cursos", label: "Educación continua", icon: <GraduationCap className="h-4 w-4" /> },
-    { href: "/dashboard/encuesta", label: "Encuesta de pertinencia", icon: <ClipboardList className="h-4 w-4" /> },
-    { href: "/dashboard/psicometria", label: "Evaluación psicométrica", icon: <Brain className="h-4 w-4" /> },
+    { href: "/dashboard/cursos", label: "Educación continua", icon: <GraduationCap className="h-4 w-4" />, group: "Desarrollo profesional" },
+    { href: "/dashboard/encuesta", label: "Encuesta de pertinencia", icon: <ClipboardList className="h-4 w-4" />, group: "Desarrollo profesional" },
+    { href: "/dashboard/psicometria", label: "Evaluación psicométrica", icon: <Brain className="h-4 w-4" />, group: "Desarrollo profesional" },
   ];
 
   const rolLabel = esEstudiante ? "Estudiante" : "Profesional";
