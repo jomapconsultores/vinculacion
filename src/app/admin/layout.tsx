@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar, type NavItem, type RolDisponible } from "@/components/Sidebar";
-import { LayoutDashboard, HeartHandshake, GraduationCap, BarChart3, TrendingUp, ClipboardList, UserCheck, Brain, Users, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, HeartHandshake, GraduationCap, BarChart3, TrendingUp, ClipboardList, UserCheck, Brain, Users, ShieldCheck, UsersRound } from "lucide-react";
 
 const LABELS_ROL: Record<string, string> = {
   estudiante: "Estudiante",
@@ -73,6 +73,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     profile.rol === "admin"
       ? [
           ...itemsVisibles,
+          { href: "/admin/usuarios", label: "Usuarios", icon: <UsersRound className="h-4 w-4" />, group: "Administración" },
           { href: "/admin/solicitudes", label: "Solicitudes", icon: <UserCheck className="h-4 w-4" />, group: "Administración" },
           { href: "/admin/autoridades", label: "Autoridades", icon: <ShieldCheck className="h-4 w-4" />, group: "Administración" },
         ]

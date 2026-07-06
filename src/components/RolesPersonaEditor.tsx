@@ -13,11 +13,19 @@ type RolAsignado = {
 
 type Empresa = { id: number; nombre: string };
 
-const ROLES_OTORGABLES: { value: "estudiante" | "profesional" | "empleador"; label: string }[] = [
+type RolOtorgable = "estudiante" | "profesional" | "empleador" | "autoridad" | "admin";
+
+const ROLES_OTORGABLES: { value: RolOtorgable; label: string }[] = [
   { value: "estudiante", label: "Estudiante" },
   { value: "profesional", label: "Profesional" },
   { value: "empleador", label: "Empleador" },
+  { value: "autoridad", label: "Autoridad" },
+  { value: "admin", label: "Administrador" },
 ];
+
+// 'autoridad' y 'admin' no se otorgan al instante: quedan pendientes de
+// aprobación en /admin/solicitudes (0033_solicitudes_rol.sql).
+const ROLES_REQUIEREN_APROBACION = new Set(["autoridad", "admin"]);
 
 function rolLabel(rol: string): string {
   switch (rol) {
@@ -40,24 +48,30 @@ export function RolesPersonaEditor({
   rolActual,
   rolesAsignados,
   empresasDisponibles,
+  solicitudesPendientes = [],
   puedeAdministrar,
 }: {
   profileId: string;
   rolActual: string;
   rolesAsignados: RolAsignado[];
   empresasDisponibles: Empresa[];
+  // Solicitudes de 'autoridad'/'admin' aún sin resolver (0033), para mostrar
+  // el badge "Pendiente de aprobación" mientras no aparecen en rolesAsignados.
+  solicitudesPendientes?: { rol: string }[];
   // Otorgar/revocar roles es exclusivo del administrador (autoridad puede
   // ver esta ficha y esta lista, pero no modificarla).
   puedeAdministrar: boolean;
 }) {
   const router = useRouter();
-  const [nuevoRol, setNuevoRol] = useState<"estudiante" | "profesional" | "empleador">("estudiante");
+  const [nuevoRol, setNuevoRol] = useState<RolOtorgable>("estudiante");
   const [empresaId, setEmpresaId] = useState<string>("");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mensaje, setMensaje] = useState<string | null>(null);
 
   async function otorgar() {
     setError(null);
+    setMensaje(null);
     if (nuevoRol === "empleador" && !empresaId) {
       setError("Selecciona una empresa.");
       return;
@@ -76,6 +90,9 @@ export function RolesPersonaEditor({
       if (!r.ok) {
         setError(j.error || "No se pudo otorgar el rol.");
         return;
+      }
+      if (j.pendiente) {
+        setMensaje("Solicitud enviada. Debe aprobarse en Solicitudes antes de tomar efecto.");
       }
       setEmpresaId("");
       router.refresh();
@@ -138,6 +155,22 @@ export function RolesPersonaEditor({
             </span>
           );
         })}
+        {solicitudesPendientes.map((s) => (
+          <span key={`pendiente-${s.rol}`} className="badge bg-amber-50 text-amber-700">
+            {rolLabel(s.rol)} · Pendiente de aprobación
+            {puedeAdministrar && (
+              <button
+                type="button"
+                className="ml-1 rounded-full hover:text-red-600 disabled:opacity-50"
+                onClick={() => revocar(s.rol)}
+                disabled={cargando}
+                title="Cancelar solicitud"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </span>
+        ))}
       </div>
 
       {puedeAdministrar ? (
@@ -181,6 +214,7 @@ export function RolesPersonaEditor({
         </p>
       )}
 
+      {mensaje && <p className="mt-3 text-sm text-amber-700">{mensaje}</p>}
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
     </section>
   );

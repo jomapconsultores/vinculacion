@@ -7,8 +7,15 @@ export const runtime = "nodejs";
 // administrador (no de autoridad): RLS (0031, roles_asignados_admin_write)
 // ya lo exige a nivel de fila, pero autenticamos aquí primero para devolver
 // un mensaje de error más claro que el genérico de Postgres.
-const ROLES_AUTOSERVICIO = ["estudiante", "profesional", "empleador"] as const;
-type RolAutoservicio = (typeof ROLES_AUTOSERVICIO)[number];
+//
+// 'autoridad' y 'admin' dan acceso de staff (o control total), así que no se
+// otorgan al instante: quedan en solicitudes_rol (0033) pendientes de
+// aprobación por el administrador en /admin/solicitudes. Estudiante,
+// profesional y empleador no elevan ese nivel de acceso y se otorgan de
+// inmediato, como antes.
+const ROLES_OTORGABLES = ["estudiante", "profesional", "empleador", "autoridad", "admin"] as const;
+type RolOtorgable = (typeof ROLES_OTORGABLES)[number];
+const ROLES_REQUIEREN_APROBACION = ["autoridad", "admin"] as const;
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -39,8 +46,30 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const rol = body?.rol as string | undefined;
   const empresaId = body?.empresa_id;
 
-  if (!rol || !ROLES_AUTOSERVICIO.includes(rol as RolAutoservicio)) {
+  if (!rol || !ROLES_OTORGABLES.includes(rol as RolOtorgable)) {
     return NextResponse.json({ error: "Rol inválido" }, { status: 400 });
+  }
+
+  if (ROLES_REQUIEREN_APROBACION.includes(rol as (typeof ROLES_REQUIEREN_APROBACION)[number])) {
+    const { data: existente } = await supabase
+      .from("solicitudes_rol")
+      .select("id")
+      .eq("profile_id", params.id)
+      .eq("rol", rol)
+      .eq("estado", "pendiente")
+      .maybeSingle();
+    if (existente) {
+      return NextResponse.json({ error: "Ya existe una solicitud pendiente para ese rol." }, { status: 400 });
+    }
+
+    const { data: solicitud, error } = await supabase
+      .from("solicitudes_rol")
+      .insert({ profile_id: params.id, rol, solicitado_por: userId })
+      .select("id, rol")
+      .single();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true, pendiente: true, solicitud });
   }
 
   let empresaIdFinal: number | null = null;
@@ -108,6 +137,15 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       { status: 400 }
     );
   }
+
+  // Si había una solicitud pendiente para ese rol (autoridad/admin, 0033),
+  // "revocar" antes de que se apruebe simplemente la cancela.
+  await supabase
+    .from("solicitudes_rol")
+    .delete()
+    .eq("profile_id", params.id)
+    .eq("rol", rol)
+    .eq("estado", "pendiente");
 
   const { error } = await supabase
     .from("roles_asignados")
