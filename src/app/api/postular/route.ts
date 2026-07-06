@@ -30,11 +30,23 @@ type Analisis = {
 // analisis enviado por el cliente) para que 'confirmar' no pueda usarse para
 // grabar un match_score/ia_analisis falsificado.
 async function evaluar(supabase: any, user: { id: string }, empleoId: number): Promise<Analisis> {
-  const { data: empleo, error: eEmpleo } = await supabase
-    .from("empleos")
-    .select("id, titulo, descripcion, empresas(nombre), empleo_competencias(requerida, competencias(id, nombre, descripcion))")
-    .eq("id", empleoId)
-    .single();
+  const [
+    { data: empleo, error: eEmpleo },
+    { data: compsG, error: eComp },
+    { data: hab, error: eHab },
+    { data: exp, error: eExp },
+    { data: cursos, error: eCursos },
+  ] = await Promise.all([
+    supabase
+      .from("empleos")
+      .select("id, titulo, descripcion, empresas(nombre), empleo_competencias(requerida, competencias(id, nombre, descripcion))")
+      .eq("id", empleoId)
+      .single(),
+    supabase.from("competencias_graduado").select("competencia_id, estado, competencias(nombre)").eq("profile_id", user.id),
+    supabase.from("habilidades").select("nombre, nivel").eq("profile_id", user.id),
+    supabase.from("experiencia_laboral").select("cargo, empresa, descripcion").eq("profile_id", user.id),
+    supabase.from("cursos").select("id, nombre, competencia_id, duracion_horas, modalidad"),
+  ]);
   if (eEmpleo) console.error("[postular] error leyendo empleo:", eEmpleo.message);
   if (!empleo) throw new Error("Empleo no encontrado");
 
@@ -45,18 +57,6 @@ async function evaluar(supabase: any, user: { id: string }, empleoId: number): P
     requerida: ec.requerida as boolean,
   }));
 
-  // Perfil del graduado
-  const [
-    { data: compsG, error: eComp },
-    { data: hab, error: eHab },
-    { data: exp, error: eExp },
-    { data: cursos, error: eCursos },
-  ] = await Promise.all([
-    supabase.from("competencias_graduado").select("competencia_id, estado, competencias(nombre)").eq("profile_id", user.id),
-    supabase.from("habilidades").select("nombre, nivel").eq("profile_id", user.id),
-    supabase.from("experiencia_laboral").select("cargo, empresa, descripcion").eq("profile_id", user.id),
-    supabase.from("cursos").select("id, nombre, competencia_id, duracion_horas, modalidad"),
-  ]);
   const errorPerfil = eComp || eHab || eExp || eCursos;
   if (errorPerfil) {
     console.error("[postular] error leyendo perfil del graduado:", errorPerfil.message);

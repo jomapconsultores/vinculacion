@@ -8,17 +8,19 @@ export default async function EmpleosPage() {
   const profile = await requireProfile();
   const supabase = await createClient();
 
-  const { data: empleos } = await supabase
-    .from("empleos")
-    .select("id, titulo, ciudad, modalidad, salario_min, salario_max, empresas(nombre, validada), empleo_competencias(competencias(nombre))")
-    .eq("estado", "publicado")
-    .order("created_at", { ascending: false });
-
-  const { data: misPost } = await supabase
-    .from("postulaciones").select("empleo_id, estado, match_score").eq("profile_id", profile.id);
+  const [{ data: empleos }, { data: misPost }] = await Promise.all([
+    supabase
+      .from("empleos")
+      .select(
+        "id, titulo, ciudad, modalidad, salario_min, salario_max, empresas(nombre, validada), empleo_competencias(competencia_id, requerida, competencias(nombre))"
+      )
+      .eq("estado", "publicado")
+      .order("created_at", { ascending: false }),
+    supabase.from("postulaciones").select("empleo_id, estado, match_score").eq("profile_id", profile.id),
+  ]);
   const postByEmpleo = new Map((misPost ?? []).map((p: any) => [p.empleo_id, p]));
 
-  const recomendados = await empleosRecomendados(supabase, profile.id, 3);
+  const recomendados = await empleosRecomendados(supabase, profile.id, 3, empleos, misPost);
 
   return (
     <div className="space-y-6">

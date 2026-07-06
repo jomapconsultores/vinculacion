@@ -31,33 +31,38 @@ export default async function EmpleoDetallePage({ params }: { params: { id: stri
   const empleoId = Number(params.id);
   if (!Number.isFinite(empleoId)) notFound();
 
-  const { data: empleo } = await supabase
-    .from("empleos")
-    .select(
-      "id, empresa_id, titulo, descripcion, ciudad, modalidad, salario_min, salario_max, estado, empleo_competencias(requerida, competencias(nombre))"
-    )
-    .eq("id", empleoId)
-    .maybeSingle();
+  const [{ data: empleo }, { data: postulaciones }] = await Promise.all([
+    supabase
+      .from("empleos")
+      .select(
+        "id, empresa_id, titulo, descripcion, ciudad, modalidad, salario_min, salario_max, estado, empleo_competencias(competencia_id, requerida, competencias(nombre))"
+      )
+      .eq("id", empleoId)
+      .maybeSingle(),
+    supabase
+      .from("postulaciones")
+      .select(
+        "id, estado, match_score, ia_analisis, profiles(id, nombres, apellidos, titulo, ciudad, resumen_profesional)"
+      )
+      .eq("empleo_id", empleoId)
+      .order("match_score", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: true }),
+  ]);
 
   // Verificar propiedad
   if (!empleo || (empleo as any).empresa_id !== profile.empresa_id) notFound();
   const e = empleo as any;
 
-  const { data: postulaciones } = await supabase
-    .from("postulaciones")
-    .select(
-      "id, estado, match_score, ia_analisis, profiles(id, nombres, apellidos, titulo, ciudad, resumen_profesional)"
-    )
-    .eq("empleo_id", empleoId)
-    .order("match_score", { ascending: false, nullsFirst: false })
-    .order("id", { ascending: true });
-
   const lista = (postulaciones ?? []) as any[];
   const requeridas: string[] = (e.empleo_competencias ?? [])
     .map((ec: any) => ec.competencias?.nombre)
     .filter(Boolean);
+  const requeridasIds: number[] = (e.empleo_competencias ?? [])
+    .filter((ec: any) => ec.requerida)
+    .map((ec: any) => ec.competencia_id)
+    .filter((id: any) => id != null);
 
-  const sugeridos = await candidatosSugeridos(supabase, empleoId, 5);
+  const sugeridos = await candidatosSugeridos(supabase, empleoId, requeridasIds, 5);
 
   return (
     <div className="space-y-6">
