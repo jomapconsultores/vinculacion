@@ -3,11 +3,17 @@ import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-const ROLES_PERMITIDOS = ["estudiante", "profesional", "empleador"] as const;
-type RolPermitido = (typeof ROLES_PERMITIDOS)[number];
+const ROLES_BASE = ["estudiante", "profesional", "empleador"] as const;
+// 'autoridad'/'admin' solo se suman a lo autoservicio-permitido si el propio
+// perfil tiene autoservicio_staff=true (0034) — excepción puntual para
+// cuentas de demostración, no un cambio general de la restricción.
+const ROLES_STAFF = ["autoridad", "admin"] as const;
+type RolPermitido = (typeof ROLES_BASE)[number] | (typeof ROLES_STAFF)[number];
 
-function esRolPermitido(rol: unknown): rol is RolPermitido {
-  return typeof rol === "string" && (ROLES_PERMITIDOS as readonly string[]).includes(rol);
+function esRolPermitido(rol: unknown, permiteStaff: boolean): rol is RolPermitido {
+  if (typeof rol !== "string") return false;
+  if ((ROLES_BASE as readonly string[]).includes(rol)) return true;
+  return permiteStaff && (ROLES_STAFF as readonly string[]).includes(rol);
 }
 
 export async function POST(req: Request) {
@@ -17,8 +23,14 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
+  const { data: yo } = await supabase
+    .from("profiles")
+    .select("autoservicio_staff")
+    .eq("id", user.id)
+    .maybeSingle();
+
   const { rol } = await req.json().catch(() => ({}));
-  if (!esRolPermitido(rol)) {
+  if (!esRolPermitido(rol, !!yo?.autoservicio_staff)) {
     return NextResponse.json({ error: "Rol inválido." }, { status: 400 });
   }
 
