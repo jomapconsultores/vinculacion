@@ -5,8 +5,12 @@ import { DOCUMENTOS_BUCKET } from "@/lib/documentos";
 export const runtime = "nodejs";
 
 // Enlace firmado de descarga. Sirve tanto para el dueño como para el staff
-// (admin/autoridad): la fila solo es visible para ellos vía RLS, y el
-// storage aplica la misma regla sobre el objeto real.
+// con el módulo 'personas' otorgado: la fila solo es visible para ellos vía
+// RLS (doc_staff_read/doc_staff_delete exigen is_staff() Y
+// has_modulo('personas'), ver 0032_permisos_modulo.sql), y el storage aplica
+// la misma regla sobre el objeto real (doc_storage_read/doc_storage_delete).
+// No hace falta repetir la comprobación aquí: los ids son enumerables, pero
+// sin el módulo la consulta simplemente no devuelve fila.
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { tieneModulo } from "@/lib/auth";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import type { PDFFont, PDFPage } from "pdf-lib";
 
@@ -53,17 +54,17 @@ export async function GET() {
     return new Response("No autorizado", { status: 401 });
   }
 
-  // Autorizacion (rol staff)
+  // Autorizacion (rol staff + módulo 'empleabilidad' otorgado): coincide con
+  // el gate de la página que ofrece el botón de descarga
+  // (admin/empleabilidad/page.tsx usa requireModulo("empleabilidad")); sin
+  // esta comprobación, navegar directo a esta URL evadía el módulo revocado.
   const { data: perfil } = await supabase
     .from("profiles")
-    .select("rol, aprobado")
+    .select("id, rol, aprobado")
     .eq("id", user.id)
     .maybeSingle();
 
-  const p = perfil as { rol?: string; aprobado?: boolean } | null;
-  const rol = p?.rol;
-  // admin siempre; autoridad solo si está aprobada (coincide con el gate del layout).
-  const autorizado = rol === "admin" || (rol === "autoridad" && p?.aprobado === true);
+  const autorizado = perfil ? await tieneModulo(perfil, "empleabilidad") : false;
   if (!autorizado) {
     return new Response("Acceso denegado", { status: 403 });
   }

@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import type { Modulo } from "@/lib/modulos";
 
 export type Rol = "estudiante" | "profesional" | "graduado" | "empleador" | "autoridad" | "admin";
 
@@ -47,4 +48,34 @@ export async function requireProfile(): Promise<Profile> {
   const profile = await getSessionProfile();
   if (!profile) redirect("/login");
   return profile;
+}
+
+// Comprueba (sin redirigir) si `profile` tiene otorgado `modulo` en
+// permisos_modulo. admin siempre pasa. Reutilizado tanto por requireModulo
+// (páginas server, redirige) como por las rutas API que necesitan devolver
+// un 403 en vez de una redirección (ver 0032_permisos_modulo.sql: esto es
+// solo la comprobación de aplicación; las políticas RLS de cada tabla de
+// módulo hacen la comprobación real a nivel de datos).
+export async function tieneModulo(
+  profile: Pick<Profile, "id" | "rol" | "aprobado">,
+  modulo: Modulo
+): Promise<boolean> {
+  if (profile.rol === "admin") return true;
+  if (profile.rol === "autoridad" && profile.aprobado) {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("permisos_modulo")
+      .select("id")
+      .eq("profile_id", profile.id)
+      .eq("modulo", modulo)
+      .maybeSingle();
+    return !!data;
+  }
+  return false;
+}
+
+export async function requireModulo(modulo: Modulo): Promise<Profile> {
+  const profile = await requireProfile();
+  if (await tieneModulo(profile, modulo)) return profile;
+  redirect("/admin");
 }

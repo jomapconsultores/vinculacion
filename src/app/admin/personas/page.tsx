@@ -1,14 +1,13 @@
 import Link from "next/link";
-import { requireProfile } from "@/lib/auth";
+import { requireModulo } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { iniciales } from "@/lib/utils";
 import { Users, Search, ChevronRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-// Solo llega aquí admin o autoridad aprobada: lo garantiza src/app/admin/layout.tsx.
 export default async function PersonasPage({ searchParams }: { searchParams: { q?: string } }) {
-  await requireProfile();
+  await requireModulo("personas");
   const supabase = await createClient();
   const q = (searchParams.q || "").trim();
 

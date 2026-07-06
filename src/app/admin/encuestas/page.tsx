@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { requireProfile } from "@/lib/auth";
+import { requireModulo } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   PERTINENCIA,
@@ -145,10 +144,7 @@ function SeccionEncuesta({
 }
 
 export default async function EncuestasResultadosPage() {
-  const profile = await requireProfile();
-  if (profile.rol !== "admin" && profile.rol !== "autoridad") {
-    redirect("/dashboard");
-  }
+  await requireModulo("encuestas");
 
   const supabase = await createClient();
   const { data } = await supabase

@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { requireProfile } from "@/lib/auth";
+import { requireModulo } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ListaPsicometria, type ResultadoAdmin } from "@/components/ListaPsicometria";
 import { Brain, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
@@ -8,10 +7,7 @@ import { Brain, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
 const PAGE_SIZE = 25;
 
 export default async function AdminPsicometriaPage({ searchParams }: { searchParams: { page?: string } }) {
-  const profile = await requireProfile();
-  if (profile.rol !== "admin" && profile.rol !== "autoridad") {
-    redirect("/dashboard");
-  }
+  await requireModulo("psicometria");
 
   const page = Math.max(1, Number(searchParams.page) || 1);
   const desde = (page - 1) * PAGE_SIZE;

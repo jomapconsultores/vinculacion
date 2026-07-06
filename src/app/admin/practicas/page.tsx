@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireModulo } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { GraduationCap, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import { estiloEstadoPractica, etiquetaEstadoPractica, porcentajeCumplimiento } from "@/lib/estadoPractica";
@@ -16,6 +17,7 @@ type Practica = {
 const PAGE_SIZE = 25;
 
 export default async function PracticasPage({ searchParams }: { searchParams: { page?: string } }) {
+  await requireModulo("practicas");
   const supabase = await createClient();
   const page = Math.max(1, Number(searchParams.page) || 1);
   const desde = (page - 1) * PAGE_SIZE;

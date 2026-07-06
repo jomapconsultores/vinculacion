@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireProfile } from "@/lib/auth";
+import { requireModulo } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { DocumentosAdminView } from "@/components/DocumentosAdminView";
 import { RolesPersonaEditor } from "@/components/RolesPersonaEditor";
@@ -38,14 +38,13 @@ function rolBadgeLabel(rol: string) {
   }
 }
 
-// Solo llega aquí admin o autoridad aprobada: lo garantiza src/app/admin/layout.tsx.
 // La consulta usa el cliente con sesión (no el de service role) para que las
 // políticas RLS de profiles/documentos_personales sigan siendo la fuente de verdad.
 // Sin filtro por rol: esta ficha debe seguir siendo accesible aunque el rol
 // activo de la persona haya cambiado a 'empleador' (u otro) tras otorgarse
 // desde aquí mismo, para poder corregir/revocar ese otorgamiento.
 export default async function PersonaDetalle({ params }: { params: { id: string } }) {
-  const yo = await requireProfile();
+  const yo = await requireModulo("personas");
   const supabase = await createClient();
 
   const [{ data: persona }, { data: documentos }, { data: roles }, { data: empresas }] = await Promise.all([

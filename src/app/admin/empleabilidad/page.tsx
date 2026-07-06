@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { requireProfile } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requireModulo } from "@/lib/auth";
 import {
   Download,
   GraduationCap,
@@ -37,10 +36,7 @@ function colorInsercion(tasa: number) {
 }
 
 export default async function EmpleabilidadPage() {
-  const profile = await requireProfile();
-  if (profile.rol !== "admin" && profile.rol !== "autoridad") {
-    redirect("/dashboard");
-  }
+  await requireModulo("empleabilidad");
 
   const supabase = await createClient();
 

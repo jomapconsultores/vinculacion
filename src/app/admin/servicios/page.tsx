@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireModulo } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { HeartHandshake, AlertTriangle, CheckCircle2, TrendingDown, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -50,6 +51,7 @@ const estilos: Record<
 const PAGE_SIZE = 25;
 
 export default async function ServiciosPage({ searchParams }: { searchParams: { page?: string } }) {
+  await requireModulo("servicios");
   const supabase = await createClient();
   const page = Math.max(1, Number(searchParams.page) || 1);
   const desde = (page - 1) * PAGE_SIZE;

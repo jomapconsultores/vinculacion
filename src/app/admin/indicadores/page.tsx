@@ -1,3 +1,4 @@
+import { requireModulo } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { TrendingUp, Award, Send, HeartHandshake, ShieldCheck, Info } from "lucide-react";
 
@@ -20,6 +21,7 @@ const ESTADOS: { key: string; label: string; color: string }[] = [
 ];
 
 export default async function IndicadoresPage() {
+  await requireModulo("indicadores");
   const supabase = await createClient();
 
   const [{ data: ind }, { data: dist }, { data: serv }] = await Promise.all([

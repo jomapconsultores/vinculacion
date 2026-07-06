@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { requireProfile } from "@/lib/auth";
+import { requireModulo } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/server";
 import { RevisarCursoBtn } from "./RevisarCursoBtn";
 import { GraduationCap, Inbox, Award } from "lucide-react";
@@ -8,8 +7,7 @@ import { iniciales } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export default async function RevisionCursosPage() {
-  const profile = await requireProfile();
-  if (!["admin", "autoridad"].includes(profile.rol)) redirect("/admin");
+  await requireModulo("cursos");
 
   const admin = createAdminClient();
   const { data: pendientes } = await admin

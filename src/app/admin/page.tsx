@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { requireProfile } from "@/lib/auth";
 import {
   GraduationCap,
   ShieldCheck,
@@ -9,6 +10,7 @@ import {
   HeartHandshake,
   ArrowDown,
   TrendingUp,
+  Info,
 } from "lucide-react";
 
 type Indicadores = {
@@ -43,12 +45,29 @@ const KPI = ({
 );
 
 export default async function AdminPanel() {
+  const profile = await requireProfile();
   const supabase = await createClient();
 
-  const { data: ind } = await supabase
-    .from("v_indicadores_globales")
-    .select("*")
-    .single();
+  // "/admin" no tiene módulo propio (siempre visible, ver admin/layout.tsx),
+  // pero mostraba los mismos indicadores globales que /admin/indicadores
+  // oculta explícitamente detrás del módulo 'indicadores' (requireModulo):
+  // revocarle ese módulo a una autoridad no le quitaba la visibilidad real
+  // de estas cifras. Se gatea aquí también el contenido, no solo el enlace.
+  let tieneIndicadores = true;
+  let sinModulos = false;
+  if (profile.rol !== "admin") {
+    const { data: permisos } = await supabase
+      .from("permisos_modulo")
+      .select("modulo")
+      .eq("profile_id", profile.id);
+    const modulos = new Set((permisos ?? []).map((p) => p.modulo));
+    tieneIndicadores = modulos.has("indicadores");
+    sinModulos = modulos.size === 0;
+  }
+
+  const { data: ind } = tieneIndicadores
+    ? await supabase.from("v_indicadores_globales").select("*").single()
+    : { data: null };
 
   const indicadores: Indicadores = (ind as Indicadores) ?? {
     total_graduados: 0,
@@ -110,6 +129,22 @@ export default async function AdminPanel() {
         </p>
       </header>
 
+      {!tieneIndicadores ? (
+        <section className="card flex items-start gap-3 p-6">
+          <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" />
+          <div>
+            <p className="font-medium text-slate-900">
+              {sinModulos
+                ? "Tu cuenta de autoridad aún no tiene módulos asignados."
+                : "No tienes acceso al módulo de Indicadores."}
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              Contacta al administrador para que te otorgue acceso desde /admin/autoridades.
+            </p>
+          </div>
+        </section>
+      ) : (
+        <>
       {/* KPIs */}
       <section className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
         <KPI
@@ -215,6 +250,8 @@ export default async function AdminPanel() {
           })}
         </div>
       </section>
+        </>
+      )}
     </div>
   );
 }
