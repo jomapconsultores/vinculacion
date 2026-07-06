@@ -1,10 +1,18 @@
 // Cabeceras de seguridad HTTP (ausentes en producción: ver auditoría).
-// CSP deliberadamente sin 'unsafe-inline' en script-src: la app no usa
-// scripts inline ni de terceros (solo fuentes locales, ver src/app/layout.tsx).
+//
+// CORRECCIÓN: la versión anterior de este archivo asumía que la app "no usa
+// scripts inline" y ponía script-src 'self' sin 'unsafe-inline'. Eso es falso:
+// el propio App Router de Next.js inyecta <script> inline en cada página para
+// el streaming de RSC y el bootstrap de hidratación (self.__next_f.push(...)),
+// confirmado viendo el HTML servido en producción. Con 'unsafe-inline'
+// ausente, el navegador bloqueaba esos scripts y TODA la interactividad de
+// cliente dejaba de funcionar sitio-wide (formularios, botones, el ojito de
+// contraseña, etc.) sin ningún error visible en la UI. Se agrega
+// 'unsafe-inline' a script-src para restaurar la hidratación.
 const SUPABASE_HOST = "rfijjtvozncllqvocdat.supabase.co";
 const CSP = [
   "default-src 'self'",
-  "script-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: https://${SUPABASE_HOST}`,
   `connect-src 'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST}`,
