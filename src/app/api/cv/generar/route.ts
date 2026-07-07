@@ -17,9 +17,8 @@ export async function POST() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
-  const { data: profile } = await supabase
-    .from("profiles").select("*, carreras(nombre)").eq("id", user.id).single();
-  const [{ data: exp }, { data: edu }, { data: hab }, { data: cvActual }] = await Promise.all([
+  const [{ data: profile }, { data: exp }, { data: edu }, { data: hab }, { data: cvActual }] = await Promise.all([
+    supabase.from("profiles").select("*, carreras(nombre)").eq("id", user.id).single(),
     supabase.from("experiencia_laboral").select("*").eq("profile_id", user.id),
     supabase.from("educacion").select("*").eq("profile_id", user.id),
     supabase.from("habilidades").select("*").eq("profile_id", user.id),

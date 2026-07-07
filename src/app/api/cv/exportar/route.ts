@@ -93,15 +93,13 @@ async function generarPDF(cv: CVAnalisis): Promise<Buffer> {
   const CW = W - M * 2;
   const BAND = 140;
 
-  const logoBytes = await loadLogo("logo-ucuenca.png");
+  const [logoBytes, foto] = await Promise.all([loadLogo("logo-ucuenca.png"), loadImageBytes(cv.foto_url)]);
   const logo = logoBytes ? await doc.embedPng(logoBytes).catch(() => null) : null;
   const TOPSTRIP = logo ? 48 : 0;
 
   let page = doc.addPage([W, PH]);
   let y = PH;
   let pageNum = 1;
-
-  const foto = await loadImageBytes(cv.foto_url);
 
   function watermark() {
     if (!logo) return;
@@ -299,8 +297,11 @@ function bulletP(text: string) {
 
 async function generarWord(cv: CVAnalisis): Promise<Buffer> {
   const children: (Paragraph | Table)[] = [];
-  const logoBytes = await loadLogo("logo-ucuenca.png");
-  const marcaBytes = await loadLogo("logo-ucuenca-marca.png");
+  const [logoBytes, marcaBytes, foto] = await Promise.all([
+    loadLogo("logo-ucuenca.png"),
+    loadLogo("logo-ucuenca-marca.png"),
+    loadImageBytes(cv.foto_url),
+  ]);
 
   if (logoBytes) {
     children.push(
@@ -327,7 +328,6 @@ async function generarWord(cv: CVAnalisis): Promise<Buffer> {
     ],
   });
 
-  const foto = await loadImageBytes(cv.foto_url);
   const cells = [headTextCell];
   if (foto) {
     cells.push(

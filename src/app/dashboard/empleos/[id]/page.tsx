@@ -9,16 +9,17 @@ export default async function EmpleoDetalle({ params }: { params: { id: string }
   const profile = await requireProfile();
   const supabase = await createClient();
 
-  const { data: empleo } = await supabase
-    .from("empleos")
-    .select("*, empresas(nombre, sector, validada, descripcion), empleo_competencias(requerida, competencias(id, nombre, descripcion))")
-    .eq("id", params.id)
-    .maybeSingle();
+  const [{ data: empleo }, { data: post }] = await Promise.all([
+    supabase
+      .from("empleos")
+      .select("*, empresas(nombre, sector, validada, descripcion), empleo_competencias(requerida, competencias(id, nombre, descripcion))")
+      .eq("id", params.id)
+      .maybeSingle(),
+    supabase
+      .from("postulaciones").select("ia_analisis, estado").eq("empleo_id", params.id).eq("profile_id", profile.id).maybeSingle(),
+  ]);
 
   if (!empleo) notFound();
-
-  const { data: post } = await supabase
-    .from("postulaciones").select("ia_analisis, estado").eq("empleo_id", params.id).eq("profile_id", profile.id).maybeSingle();
 
   return (
     <div className="space-y-6">
