@@ -1,6 +1,7 @@
 import { requireModulo } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { TrendingUp, Award, Send, HeartHandshake, ShieldCheck, Info } from "lucide-react";
+import { BotonesReporte } from "@/components/BotonesReporte";
 
 type Indicadores = {
   total_graduados: number;
@@ -65,15 +66,18 @@ export default async function IndicadoresPage() {
 
   return (
     <div className="space-y-8">
-      <header>
-        <span className="badge bg-violet-50 text-violet-700">Pilar 4 · Acreditación</span>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">
-          Consolidación de indicadores de acreditación
-        </h1>
-        <p className="mt-1 max-w-3xl text-slate-500">
-          Indicadores clave del proceso de vinculación con la sociedad, calculados en tiempo
-          real sobre la base de datos institucional.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <span className="badge bg-violet-50 text-violet-700">Pilar 4 · Acreditación</span>
+          <h1 className="mt-2 text-2xl font-bold text-slate-900">
+            Consolidación de indicadores de acreditación
+          </h1>
+          <p className="mt-1 max-w-3xl text-slate-500">
+            Indicadores clave del proceso de vinculación con la sociedad, calculados en tiempo
+            real sobre la base de datos institucional.
+          </p>
+        </div>
+        <BotonesReporte base="/api/admin/indicadores-reporte" />
       </header>
 
       {/* Guía de lectura: explicación siempre visible para quienes ven el

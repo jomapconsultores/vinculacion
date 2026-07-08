@@ -5,6 +5,7 @@ import { AprobarBtn } from "./AprobarBtn";
 import { SolicitudRolBtn } from "./SolicitudRolBtn";
 import { UserCheck, ShieldQuestion, Inbox } from "lucide-react";
 import { iniciales } from "@/lib/utils";
+import { BotonesReporte } from "@/components/BotonesReporte";
 
 export const dynamic = "force-dynamic";
 
@@ -35,13 +36,16 @@ export default async function SolicitudesPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
-          <UserCheck className="h-6 w-6 text-blue-700" /> Solicitudes
-        </h1>
-        <p className="mt-1 text-slate-500">
-          Aprueba o rechaza el acceso de las cuentas nuevas y el otorgamiento de roles de autoridad/administrador.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
+            <UserCheck className="h-6 w-6 text-blue-700" /> Solicitudes
+          </h1>
+          <p className="mt-1 text-slate-500">
+            Aprueba o rechaza el acceso de las cuentas nuevas y el otorgamiento de roles de autoridad/administrador.
+          </p>
+        </div>
+        <BotonesReporte base="/api/admin/solicitudes-reporte" />
       </div>
 
       <section className="space-y-3">

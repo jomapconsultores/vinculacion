@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireModulo } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ListaPsicometria, type ResultadoAdmin } from "@/components/ListaPsicometria";
+import { BotonesReporte } from "@/components/BotonesReporte";
 import { Brain, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
 
 const PAGE_SIZE = 25;
@@ -33,17 +34,20 @@ export default async function AdminPsicometriaPage({ searchParams }: { searchPar
 
   return (
     <div className="space-y-8">
-      <header>
-        <span className="badge bg-indigo-50 text-indigo-700">
-          <Brain className="h-4 w-4" /> Bienestar
-        </span>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">Evaluaciones psicométricas</h1>
-        <p className="mt-1 max-w-3xl text-slate-500">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <span className="badge bg-indigo-50 text-indigo-700">
+            <Brain className="h-4 w-4" /> Bienestar
+          </span>
+          <h1 className="mt-2 text-2xl font-bold text-slate-900">Evaluaciones psicométricas</h1>
+          <p className="mt-1 max-w-3xl text-slate-500">
           Resultados del &quot;Perfil Psicolaboral&quot; que las personas usuarias completan de forma voluntaria.
-          {conAlerta > 0 && (
-            <> Hay <strong className="text-rose-700">{conAlerta}</strong> {conAlerta === 1 ? "resultado" : "resultados"} con señales de riesgo psicosocial que sugieren acompañamiento.</>
-          )}
-        </p>
+            {conAlerta > 0 && (
+              <> Hay <strong className="text-rose-700">{conAlerta}</strong> {conAlerta === 1 ? "resultado" : "resultados"} con señales de riesgo psicosocial que sugieren acompañamiento.</>
+            )}
+          </p>
+        </div>
+        <BotonesReporte base="/api/admin/psicometria-reporte" />
       </header>
 
       <ListaPsicometria resultados={resultados} />

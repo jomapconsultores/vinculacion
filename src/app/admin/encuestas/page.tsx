@@ -7,6 +7,7 @@ import {
   type TipoEncuesta,
 } from "@/lib/encuestas";
 import { GraduationCap, Building2, MessageSquareText, ShieldCheck, BarChart3 } from "lucide-react";
+import { BotonesReporte } from "@/components/BotonesReporte";
 
 type Respuesta = {
   id: string;
@@ -158,17 +159,20 @@ export default async function EncuestasResultadosPage() {
 
   return (
     <div className="space-y-8">
-      <header>
-        <span className="badge bg-violet-50 text-violet-700">
-          <BarChart3 className="h-4 w-4" /> Acreditación
-        </span>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">
-          Resultados de encuestas
-        </h1>
-        <p className="mt-1 max-w-3xl text-slate-500">
-          Promedios por pregunta y respuestas abiertas de las encuestas de pertinencia de la
-          formación (graduados) y de satisfacción de empleadores.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <span className="badge bg-violet-50 text-violet-700">
+            <BarChart3 className="h-4 w-4" /> Acreditación
+          </span>
+          <h1 className="mt-2 text-2xl font-bold text-slate-900">
+            Resultados de encuestas
+          </h1>
+          <p className="mt-1 max-w-3xl text-slate-500">
+            Promedios por pregunta y respuestas abiertas de las encuestas de pertinencia de la
+            formación (graduados) y de satisfacción de empleadores.
+          </p>
+        </div>
+        <BotonesReporte base="/api/admin/encuestas-reporte" />
       </header>
 
       <SeccionEncuesta

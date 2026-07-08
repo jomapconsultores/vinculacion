@@ -25,12 +25,23 @@ export async function POST(req: Request) {
 
   const { data: yo } = await supabase
     .from("profiles")
-    .select("autoservicio_staff")
+    .select("rol, autoservicio_staff")
     .eq("id", user.id)
     .maybeSingle();
 
+  // Coherente con el trigger de BD protect_profile_privileges (0034): quien ya
+  // es staff (admin/autoridad) está exento de la protección anti-escalamiento y
+  // puede cambiar libremente entre sus roles; un usuario no-staff solo puede
+  // autoservicio-cambiarse a un rol de staff si tiene la excepción
+  // autoservicio_staff. En ambos casos, más abajo se exige que el rol destino
+  // esté realmente en roles_asignados. Antes el endpoint exigía
+  // autoservicio_staff incluso a usuarios staff, devolviendo "Rol inválido"
+  // donde la BD sí habría permitido el cambio.
+  const esStaffActual = yo?.rol === "autoridad" || yo?.rol === "admin";
+  const permiteStaff = esStaffActual || !!yo?.autoservicio_staff;
+
   const { rol } = await req.json().catch(() => ({}));
-  if (!esRolPermitido(rol, !!yo?.autoservicio_staff)) {
+  if (!esRolPermitido(rol, permiteStaff)) {
     return NextResponse.json({ error: "Rol inválido." }, { status: 400 });
   }
 

@@ -12,6 +12,7 @@ import {
   TrendingUp,
   Info,
 } from "lucide-react";
+import { BotonesReporte } from "@/components/BotonesReporte";
 
 type Indicadores = {
   total_graduados: number;
@@ -120,15 +121,18 @@ export default async function AdminPanel() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <span className="badge bg-blue-50 text-blue-700">Panel de autoridad</span>
-        <h1 className="mt-2 text-xl font-bold text-slate-900 md:text-2xl">
-          Tablero institucional de vinculación
-        </h1>
-        <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500">
-          Indicadores globales y trazabilidad longitudinal del graduado, de la formación
-          al empleo. Datos auditables para acreditación.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <span className="badge bg-blue-50 text-blue-700">Panel de autoridad</span>
+          <h1 className="mt-2 text-xl font-bold text-slate-900 md:text-2xl">
+            Tablero institucional de vinculación
+          </h1>
+          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500">
+            Indicadores globales y trazabilidad longitudinal del graduado, de la formación
+            al empleo. Datos auditables para acreditación.
+          </p>
+        </div>
+        {tieneIndicadores && <BotonesReporte base="/api/admin/indicadores-reporte" />}
       </header>
 
       {!tieneIndicadores ? (

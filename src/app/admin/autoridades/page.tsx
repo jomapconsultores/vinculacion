@@ -3,6 +3,7 @@ import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { AutoridadModulos } from "@/components/AutoridadModulos";
 import { iniciales } from "@/lib/utils";
+import { BotonesReporte } from "@/components/BotonesReporte";
 import { ShieldCheck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -31,13 +32,16 @@ export default async function AutoridadesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
-          <ShieldCheck className="h-6 w-6 text-blue-700" /> Autoridades
-        </h1>
-        <p className="mt-1 text-slate-500">
-          Controla a qué módulos de /admin tiene acceso cada cuenta de autoridad.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
+            <ShieldCheck className="h-6 w-6 text-blue-700" /> Autoridades
+          </h1>
+          <p className="mt-1 text-slate-500">
+            Controla a qué módulos de /admin tiene acceso cada cuenta de autoridad.
+          </p>
+        </div>
+        <BotonesReporte base="/api/admin/autoridades-reporte" />
       </div>
 
       <div className="space-y-4">

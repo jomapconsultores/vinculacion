@@ -3,17 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LayoutGrid } from "lucide-react";
+import { MODULOS_DISPONIBLES } from "@/lib/modulos";
 
-export const MODULOS_DISPONIBLES: { value: string; label: string }[] = [
-  { value: "personas", label: "Personas" },
-  { value: "empleabilidad", label: "Empleabilidad" },
-  { value: "servicios", label: "Servicios" },
-  { value: "practicas", label: "Prácticas" },
-  { value: "cursos", label: "Revisión de cursos" },
-  { value: "indicadores", label: "Indicadores" },
-  { value: "encuestas", label: "Encuestas" },
-  { value: "psicometria", label: "Psicometría" },
-];
+export { MODULOS_DISPONIBLES };
 
 // Marca/desmarca a qué módulos de /admin tiene acceso una autoridad
 // (permisos_modulo, 0032_permisos_modulo.sql). Exclusivo del administrador:

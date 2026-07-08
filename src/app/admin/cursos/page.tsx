@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { RevisarCursoBtn } from "./RevisarCursoBtn";
 import { GraduationCap, Inbox, Award } from "lucide-react";
 import { iniciales } from "@/lib/utils";
+import { BotonesReporte } from "@/components/BotonesReporte";
 
 export const dynamic = "force-dynamic";
 
@@ -22,14 +23,18 @@ export default async function RevisionCursosPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
-          <GraduationCap className="h-6 w-6 text-violet-700" /> Revisión de cursos internos
-        </h1>
-        <p className="mt-1 text-slate-500">
-          Aprueba o rechaza los cursos internos que los graduados marcaron como completados. Al
-          aprobar, la universidad avala la competencia asociada y se emite el código de verificación.
-        </p>
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
+            <GraduationCap className="h-6 w-6 text-violet-700" /> Revisión de cursos internos
+          </h1>
+          <p className="mt-1 text-slate-500">
+            Aprueba o rechaza los cursos internos que los graduados marcaron como completados. Al
+            aprobar, la universidad avala la competencia asociada y se emite el código de
+            verificación.
+          </p>
+        </div>
+        <BotonesReporte base="/api/admin/cursos-reporte" />
       </div>
 
       {lista.length === 0 ? (

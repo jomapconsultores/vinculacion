@@ -2,7 +2,8 @@ import Link from "next/link";
 import { requireModulo } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { iniciales } from "@/lib/utils";
-import { Users, Search, ChevronRight, FileSpreadsheet } from "lucide-react";
+import { BotonesReporte } from "@/components/BotonesReporte";
+import { Users, Search, ChevronRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -38,9 +39,7 @@ export default async function PersonasPage({ searchParams }: { searchParams: { q
             administrador — ningún otro funcionario puede consultar esta información.
           </p>
         </div>
-        <a href="/api/admin/personas-excel" className="btn-outline shrink-0">
-          <FileSpreadsheet className="h-4 w-4" /> Excel
-        </a>
+        <BotonesReporte base="/api/admin/personas-reporte" />
       </div>
 
       <form className="card flex items-center gap-2 p-3">

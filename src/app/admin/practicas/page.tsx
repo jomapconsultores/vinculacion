@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireModulo } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { BotonesReporte } from "@/components/BotonesReporte";
 import { GraduationCap, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import { estiloEstadoPractica, etiquetaEstadoPractica, porcentajeCumplimiento } from "@/lib/estadoPractica";
 
@@ -49,15 +50,18 @@ export default async function PracticasPage({ searchParams }: { searchParams: { 
 
   return (
     <div className="space-y-8">
-      <header>
-        <span className="badge bg-blue-50 text-blue-700">Pilar 3 · Prácticas preprofesionales</span>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">
-          Aseguramiento de prácticas preprofesionales
-        </h1>
-        <p className="mt-1 max-w-3xl text-slate-500">
-          Seguimiento del cumplimiento de horas de los estudiantes en los servicios
-          comunitarios, con su tutor asignado y el estado de cada práctica.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <span className="badge bg-blue-50 text-blue-700">Pilar 3 · Prácticas preprofesionales</span>
+          <h1 className="mt-2 text-2xl font-bold text-slate-900">
+            Aseguramiento de prácticas preprofesionales
+          </h1>
+          <p className="mt-1 max-w-3xl text-slate-500">
+            Seguimiento del cumplimiento de horas de los estudiantes en los servicios
+            comunitarios, con su tutor asignado y el estado de cada práctica.
+          </p>
+        </div>
+        <BotonesReporte base="/api/admin/practicas-reporte" />
       </header>
 
       {/* Resumen */}

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { requireModulo } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { HeartHandshake, AlertTriangle, CheckCircle2, TrendingDown, TrendingUp, ChevronLeft, ChevronRight, FileSpreadsheet } from "lucide-react";
+import { HeartHandshake, AlertTriangle, CheckCircle2, TrendingDown, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { BotonesReporte } from "@/components/BotonesReporte";
 
 type ServicioEjecucion = {
   id: number;
@@ -94,9 +95,7 @@ export default async function ServiciosPage({ searchParams }: { searchParams: { 
             presupuestaria y la rendición de cuentas.
           </p>
         </div>
-        <a href="/api/admin/servicios-excel" className="btn-outline shrink-0">
-          <FileSpreadsheet className="h-4 w-4" /> Excel
-        </a>
+        <BotonesReporte base="/api/admin/servicios-reporte" />
       </header>
 
       {/* Resumen */}
