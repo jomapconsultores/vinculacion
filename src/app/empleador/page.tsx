@@ -80,12 +80,14 @@ export default async function EmpleadorInicio() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         {stats.map((s) => (
-          <div key={s.label} className="card card-hover p-5">
-            <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-xl ring-1 ring-inset ring-black/5 ${s.color}`}>
-              <s.icon className="h-5 w-5" />
+          <div key={s.label} className="card card-hover p-4">
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-2xl font-bold tracking-tight tabular-nums text-slate-900">{s.value}</p>
+              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${s.color}`}>
+                <s.icon className="h-4 w-4" />
+              </span>
             </div>
-            <p className="text-3xl font-bold tracking-tight tabular-nums text-slate-900">{s.value}</p>
-            <p className="text-sm text-slate-500">{s.label}</p>
+            <p className="mt-1.5 text-xs font-medium text-slate-500">{s.label}</p>
           </div>
         ))}
       </div>

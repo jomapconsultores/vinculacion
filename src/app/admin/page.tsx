@@ -35,12 +35,14 @@ const KPI = ({
   etiqueta: string;
   color: string;
 }) => (
-  <div className="card card-hover p-5">
-    <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-xl ring-1 ring-inset ring-black/5 ${color}`}>
-      <Icon className="h-5 w-5" />
+  <div className="card card-hover p-4">
+    <div className="flex items-start justify-between gap-3">
+      <p className="text-2xl font-bold tracking-tight tabular-nums text-slate-900">{valor}</p>
+      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${color}`}>
+        <Icon className="h-4 w-4" />
+      </span>
     </div>
-    <p className="text-3xl font-bold tracking-tight tabular-nums text-slate-900">{valor}</p>
-    <p className="mt-1 text-sm text-slate-500">{etiqueta}</p>
+    <p className="mt-1.5 text-xs font-medium leading-tight text-slate-500">{etiqueta}</p>
   </div>
 );
 
@@ -117,13 +119,13 @@ export default async function AdminPanel() {
       : 0;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <header>
         <span className="badge bg-blue-50 text-blue-700">Panel de autoridad</span>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">
+        <h1 className="mt-2 text-xl font-bold text-slate-900 md:text-2xl">
           Tablero institucional de vinculación
         </h1>
-        <p className="mt-1 text-slate-500">
+        <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500">
           Indicadores globales y trazabilidad longitudinal del graduado, de la formación
           al empleo. Datos auditables para acreditación.
         </p>
@@ -146,7 +148,7 @@ export default async function AdminPanel() {
       ) : (
         <>
       {/* KPIs */}
-      <section className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
         <KPI
           icon={GraduationCap}
           valor={indicadores.total_graduados}
@@ -198,10 +200,10 @@ export default async function AdminPanel() {
       </section>
 
       {/* Embudo de trazabilidad */}
-      <section className="card p-6">
+      <section className="card p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">
+            <h2 className="text-base font-semibold text-slate-900">
               Trazabilidad longitudinal
             </h2>
             <p className="text-sm text-slate-500">
@@ -214,20 +216,20 @@ export default async function AdminPanel() {
           </span>
         </div>
 
-        <div className="mt-6 space-y-3">
+        <div className="mt-5 space-y-2.5">
           {embudo.map((etapa, i) => {
             const ancho = Math.max((etapa.valor / maxEmbudo) * 100, 6);
             return (
               <div key={etapa.label}>
                 <div
-                  className={`relative overflow-hidden rounded-xl ${etapa.color} text-white transition-all`}
-                  style={{ width: `${ancho}%`, minWidth: "min(100%, 16rem)" }}
+                  className={`relative overflow-hidden rounded-lg ${etapa.color} text-white transition-all`}
+                  style={{ width: `${ancho}%`, minWidth: "min(100%, 13rem)" }}
                 >
-                  <div className="flex items-center gap-3 px-5 py-4">
-                    <etapa.icon className="h-6 w-6 shrink-0" />
+                  <div className="flex items-center gap-2.5 px-4 py-2.5">
+                    <etapa.icon className="h-4 w-4 shrink-0" />
                     <div className="min-w-0">
-                      <p className="text-2xl font-bold leading-none">{etapa.valor}</p>
-                      <p className="truncate text-sm text-white/80">{etapa.label}</p>
+                      <p className="text-lg font-bold leading-none tabular-nums">{etapa.valor}</p>
+                      <p className="truncate text-xs text-white/80">{etapa.label}</p>
                     </div>
                   </div>
                 </div>
@@ -241,8 +243,8 @@ export default async function AdminPanel() {
                   )}
                 </div>
                 {i < embudo.length - 1 && (
-                  <div className="my-1 flex justify-start pl-6 text-slate-300">
-                    <ArrowDown className="h-4 w-4" />
+                  <div className="my-0.5 flex justify-start pl-6 text-slate-300">
+                    <ArrowDown className="h-3.5 w-3.5" />
                   </div>
                 )}
               </div>
