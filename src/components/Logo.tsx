@@ -17,8 +17,9 @@ const DIMS: Record<Tamano, { mark: number; titulo: string; sub: string }> = {
   lg: { mark: 46, titulo: "text-lg", sub: "text-xs" },
 };
 
-// La marca gráfica: birrete de graduación sobre teja azul con borla roja.
-// Colores fijos (independientes de Tailwind) para verse igual en cualquier fondo.
+// La marca gráfica: un corazón azul con gradiente y un leve brillo, símbolo de
+// "Conecta" (vinculación). Colores fijos (independientes de Tailwind) para verse
+// igual sobre cualquier fondo; un sutil resplandor azul le da presencia.
 export function LogoMark({ size = 38 }: { size?: number }) {
   return (
     <svg
@@ -26,29 +27,23 @@ export function LogoMark({ size = 38 }: { size?: number }) {
       height={size}
       viewBox="0 0 40 40"
       role="img"
-      aria-label="UCuenca"
-      className="shrink-0"
+      aria-label="Conecta"
+      className="shrink-0 drop-shadow-[0_2px_5px_rgba(37,99,235,0.35)]"
     >
       <defs>
-        <linearGradient id="ucBrandTile" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#1e3a8a" />
-          <stop offset="1" stopColor="#172554" />
+        <linearGradient id="ucHeart" x1="0.2" y1="0" x2="0.7" y2="1">
+          <stop offset="0" stopColor="#60a5fa" />
+          <stop offset="0.5" stopColor="#2563eb" />
+          <stop offset="1" stopColor="#1e3a8a" />
         </linearGradient>
       </defs>
-      <rect width="40" height="40" rx="11" fill="url(#ucBrandTile)" />
-      {/* Cabeza / banda del birrete (detrás del tablero) */}
+      {/* Corazón */}
       <path
-        d="M11.5 17.2 V22 C11.5 22 15 25.6 20 25.6 C25 25.6 28.5 22 28.5 22 V17.2"
-        fill="#ffffff"
-        opacity="0.85"
+        d="M20 34.2 C20 34.2 4.5 24.8 4.5 13.9 C4.5 8.9 8.3 5 13 5 C16.2 5 18.8 6.9 20 9.7 C21.2 6.9 23.8 5 27 5 C31.7 5 35.5 8.9 35.5 13.9 C35.5 24.8 20 34.2 20 34.2 Z"
+        fill="url(#ucHeart)"
       />
-      {/* Tablero (mortarboard) */}
-      <path d="M20 8.3 L35.2 14.6 L20 20.9 L4.8 14.6 Z" fill="#ffffff" />
-      {/* Botón central */}
-      <circle cx="20" cy="14.6" r="1.35" fill="#1e3a8a" />
-      {/* Borla: cordón + nudo en rojo institucional */}
-      <path d="M34.6 14.9 V25.4" stroke="#e11d2b" strokeWidth="1.5" strokeLinecap="round" />
-      <circle cx="34.6" cy="26.8" r="1.9" fill="#e11d2b" />
+      {/* Brillo especular en el lóbulo izquierdo */}
+      <ellipse cx="13.8" cy="12.4" rx="3.6" ry="2.3" fill="#ffffff" opacity="0.35" transform="rotate(-32 13.8 12.4)" />
     </svg>
   );
 }
