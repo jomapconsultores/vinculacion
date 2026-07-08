@@ -4,6 +4,7 @@ import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { RolesPersonaEditor } from "@/components/RolesPersonaEditor";
 import { AutoridadModulos } from "@/components/AutoridadModulos";
+import { AutoservicioStaffToggle } from "@/components/AutoservicioStaffToggle";
 import { iniciales } from "@/lib/utils";
 import { ArrowLeft } from "lucide-react";
 
@@ -39,7 +40,7 @@ export default async function UsuarioDetalle({ params }: { params: { id: string 
     await Promise.all([
       supabase
         .from("profiles")
-        .select("id, nombres, apellidos, cedula, email, telefono, rol, aprobado")
+        .select("id, nombres, apellidos, cedula, email, telefono, rol, aprobado, autoservicio_staff")
         .eq("id", params.id)
         .maybeSingle(),
       supabase
@@ -100,6 +101,14 @@ export default async function UsuarioDetalle({ params }: { params: { id: string 
           aprobado={p.aprobado}
         />
       )}
+
+      <AutoservicioStaffToggle
+        profileId={p.id}
+        inicial={!!p.autoservicio_staff}
+        tieneRolStaff={(roles ?? []).some(
+          (r: any) => r.rol === "autoridad" || r.rol === "admin"
+        )}
+      />
     </div>
   );
 }
