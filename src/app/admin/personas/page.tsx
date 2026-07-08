@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireModulo } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { iniciales } from "@/lib/utils";
-import { Users, Search, ChevronRight } from "lucide-react";
+import { Users, Search, ChevronRight, FileSpreadsheet } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -28,14 +28,19 @@ export default async function PersonasPage({ searchParams }: { searchParams: { q
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
-          <Users className="h-6 w-6 text-blue-700" /> Personas
-        </h1>
-        <p className="mt-1 text-slate-500">
-          Expediente y documentos de cada estudiante o profesional. Acceso restringido a autoridades y
-          administrador — ningún otro funcionario puede consultar esta información.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
+            <Users className="h-6 w-6 text-blue-700" /> Personas
+          </h1>
+          <p className="mt-1 max-w-2xl text-slate-500">
+            Expediente y documentos de cada estudiante o profesional. Acceso restringido a autoridades y
+            administrador — ningún otro funcionario puede consultar esta información.
+          </p>
+        </div>
+        <a href="/api/admin/personas-excel" className="btn-outline shrink-0">
+          <FileSpreadsheet className="h-4 w-4" /> Excel
+        </a>
       </div>
 
       <form className="card flex items-center gap-2 p-3">

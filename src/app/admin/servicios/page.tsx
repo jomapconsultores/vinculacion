@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireModulo } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { HeartHandshake, AlertTriangle, CheckCircle2, TrendingDown, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { HeartHandshake, AlertTriangle, CheckCircle2, TrendingDown, TrendingUp, ChevronLeft, ChevronRight, FileSpreadsheet } from "lucide-react";
 
 type ServicioEjecucion = {
   id: number;
@@ -80,32 +80,37 @@ export default async function ServiciosPage({ searchParams }: { searchParams: { 
   const ejecucionGlobal = totalPlan > 0 ? Math.round((totalReal / totalPlan) * 100) : 0;
 
   return (
-    <div className="space-y-8">
-      <header>
-        <span className="badge bg-amber-50 text-amber-700">Pilar 3 · Servicios comunitarios</span>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">
-          Control académico–financiero de servicios
-        </h1>
-        <p className="mt-1 max-w-3xl text-slate-500">
-          Comparación entre las horas docentes planificadas y la atención real ejecutada en
-          cada uno de los servicios comunitarios. Esta lectura detecta desviaciones entre la
-          carga docente presupuestada y su ejecución efectiva, insumo clave para la gestión
-          presupuestaria y la rendición de cuentas.
-        </p>
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <span className="badge bg-amber-50 text-amber-700">Pilar 3 · Servicios comunitarios</span>
+          <h1 className="mt-2 text-xl font-bold text-slate-900 md:text-2xl">
+            Control académico–financiero de servicios
+          </h1>
+          <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-500">
+            Comparación entre las horas docentes planificadas y la atención real ejecutada en
+            cada uno de los servicios comunitarios. Esta lectura detecta desviaciones entre la
+            carga docente presupuestada y su ejecución efectiva, insumo clave para la gestión
+            presupuestaria y la rendición de cuentas.
+          </p>
+        </div>
+        <a href="/api/admin/servicios-excel" className="btn-outline shrink-0">
+          <FileSpreadsheet className="h-4 w-4" /> Excel
+        </a>
       </header>
 
       {/* Resumen */}
-      <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <div className="card p-5">
-          <p className="text-3xl font-bold text-slate-900">{totalRegistros}</p>
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="card p-4">
+          <p className="text-2xl font-bold tracking-tight tabular-nums text-slate-900">{totalRegistros}</p>
           <p className="mt-1 text-sm text-slate-500">Servicios monitoreados</p>
         </div>
-        <div className="card p-5">
-          <p className="text-3xl font-bold text-slate-900">{ejecucionGlobal}%</p>
+        <div className="card p-4">
+          <p className="text-2xl font-bold tracking-tight tabular-nums text-slate-900">{ejecucionGlobal}%</p>
           <p className="mt-1 text-sm text-slate-500">Ejecución global de horas</p>
         </div>
-        <div className="card p-5">
-          <p className="text-3xl font-bold text-slate-900">
+        <div className="card p-4">
+          <p className="text-2xl font-bold tracking-tight tabular-nums text-slate-900">
             {totalReal.toLocaleString("es-EC")}{" "}
             <span className="text-base font-normal text-slate-400">
               / {totalPlan.toLocaleString("es-EC")}
@@ -113,8 +118,8 @@ export default async function ServiciosPage({ searchParams }: { searchParams: { 
           </p>
           <p className="mt-1 text-sm text-slate-500">Horas reales / planificadas</p>
         </div>
-        <div className="card p-5">
-          <p className={`text-3xl font-bold ${conDesviacion > 0 ? "text-amber-600" : "text-emerald-600"}`}>
+        <div className="card p-4">
+          <p className={`text-2xl font-bold tracking-tight tabular-nums ${conDesviacion > 0 ? "text-amber-600" : "text-emerald-600"}`}>
             {conDesviacion}
           </p>
           <p className="mt-1 text-sm text-slate-500">Servicios con desviación</p>
