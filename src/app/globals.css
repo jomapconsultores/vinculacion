@@ -26,6 +26,24 @@ h1, h2, h3 {
   letter-spacing: -0.011em;
 }
 
+/* Latido del logo: efecto de bombeo tipo corazón (lub-dub con pausa). */
+@keyframes latido {
+  0%   { transform: scale(1); }
+  12%  { transform: scale(1.16); }
+  24%  { transform: scale(1); }
+  36%  { transform: scale(1.09); }
+  48%  { transform: scale(1); }
+  100% { transform: scale(1); }
+}
+.animate-latido {
+  animation: latido 1.4s ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-latido { animation: none; }
+}
+
 @layer components {
   .card {
     @apply rounded-2xl border border-slate-200/80 bg-white shadow-card;

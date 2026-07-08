@@ -7,6 +7,7 @@
 // SVG oficial; el resto del lockup (texto) se mantiene igual en toda la app.
 
 import Link from "next/link";
+import { HeartHandshake } from "lucide-react";
 
 type Variante = "brand" | "onDark";
 type Tamano = "sm" | "md" | "lg";
@@ -17,34 +18,20 @@ const DIMS: Record<Tamano, { mark: number; titulo: string; sub: string }> = {
   lg: { mark: 46, titulo: "text-lg", sub: "text-xs" },
 };
 
-// La marca gráfica: un corazón azul con gradiente y un leve brillo, símbolo de
-// "Conecta" (vinculación). Colores fijos (independientes de Tailwind) para verse
-// igual sobre cualquier fondo; un sutil resplandor azul le da presencia.
+// La marca gráfica original: el ícono HeartHandshake (manos + corazón, símbolo
+// de "Conecta"/vinculación) sobre una teja azul institucional. Late con un
+// efecto de bombeo tipo corazón (.animate-latido, ver globals.css). Tamaño
+// parametrizable en px; el ícono ocupa ~58% de la teja.
 export function LogoMark({ size = 38 }: { size?: number }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 40 40"
+    <span
       role="img"
       aria-label="Conecta"
-      className="shrink-0 drop-shadow-[0_2px_5px_rgba(37,99,235,0.35)]"
+      className="animate-latido inline-flex shrink-0 items-center justify-center rounded-xl bg-blue-900 text-white shadow-brand"
+      style={{ width: size, height: size }}
     >
-      <defs>
-        <linearGradient id="ucHeart" x1="0.2" y1="0" x2="0.7" y2="1">
-          <stop offset="0" stopColor="#60a5fa" />
-          <stop offset="0.5" stopColor="#2563eb" />
-          <stop offset="1" stopColor="#1e3a8a" />
-        </linearGradient>
-      </defs>
-      {/* Corazón */}
-      <path
-        d="M20 34.2 C20 34.2 4.5 24.8 4.5 13.9 C4.5 8.9 8.3 5 13 5 C16.2 5 18.8 6.9 20 9.7 C21.2 6.9 23.8 5 27 5 C31.7 5 35.5 8.9 35.5 13.9 C35.5 24.8 20 34.2 20 34.2 Z"
-        fill="url(#ucHeart)"
-      />
-      {/* Brillo especular en el lóbulo izquierdo */}
-      <ellipse cx="13.8" cy="12.4" rx="3.6" ry="2.3" fill="#ffffff" opacity="0.35" transform="rotate(-32 13.8 12.4)" />
-    </svg>
+      <HeartHandshake style={{ width: size * 0.58, height: size * 0.58 }} />
+    </span>
   );
 }
 
