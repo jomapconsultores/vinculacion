@@ -58,10 +58,10 @@ export default async function PersonasPage({ searchParams }: { searchParams: { q
             <Link
               key={p.id}
               href={`/admin/personas/${p.id}`}
-              className="card flex items-center justify-between gap-3 p-4 transition hover:border-blue-300"
+              className="card card-hover flex items-center justify-between gap-3 p-4"
             >
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-700">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-900 ring-1 ring-inset ring-blue-100">
                   {iniciales(p.nombres, p.apellidos)}
                 </div>
                 <div className="min-w-0">

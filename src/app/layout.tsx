@@ -9,7 +9,7 @@ const geistSans = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Proyecto Conecta — Vinculación con Graduados",
+  title: "UCuenca · Proyecto Conecta — Vinculación con Graduados",
   description:
     "Plataforma institucional de vinculación: seguimiento a graduados, empleabilidad con IA, servicios comunitarios e indicadores de acreditación.",
 };

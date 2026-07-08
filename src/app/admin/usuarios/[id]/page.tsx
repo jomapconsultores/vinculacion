@@ -63,7 +63,7 @@ export default async function UsuarioDetalle({ params }: { params: { id: string 
 
       <section className="card p-6">
         <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-200 text-base font-semibold text-slate-700">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-50 text-base font-semibold text-blue-900 ring-1 ring-inset ring-blue-100">
             {iniciales(p.nombres, p.apellidos)}
           </div>
           <div className="min-w-0">

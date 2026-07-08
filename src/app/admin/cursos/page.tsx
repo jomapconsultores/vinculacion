@@ -45,7 +45,7 @@ export default async function RevisionCursosPage() {
               className="card flex flex-col items-start justify-between gap-3 p-5 sm:flex-row sm:items-center"
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-700">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-900 ring-1 ring-inset ring-blue-100">
                   {iniciales(i.profiles?.nombres, i.profiles?.apellidos)}
                 </div>
                 <div>

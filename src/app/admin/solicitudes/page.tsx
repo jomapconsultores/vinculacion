@@ -56,7 +56,7 @@ export default async function SolicitudesPage() {
             {lista.map((p: any) => (
               <div key={p.id} className="card flex flex-col items-start justify-between gap-3 p-5 sm:flex-row sm:items-center">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-700">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-900 ring-1 ring-inset ring-blue-100">
                     {iniciales(p.nombres, p.apellidos)}
                   </div>
                   <div>
@@ -87,7 +87,7 @@ export default async function SolicitudesPage() {
             {listaRol.map((s) => (
               <div key={s.id} className="card flex flex-col items-start justify-between gap-3 p-5 sm:flex-row sm:items-center">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-700">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-900 ring-1 ring-inset ring-blue-100">
                     {iniciales(s.profiles?.nombres, s.profiles?.apellidos)}
                   </div>
                   <div>

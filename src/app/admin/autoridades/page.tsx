@@ -50,7 +50,7 @@ export default async function AutoridadesPage() {
             return (
               <div key={a.id} className="space-y-2">
                 <div className="flex items-center gap-3 px-1">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-700">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-900 ring-1 ring-inset ring-blue-100">
                     {iniciales(a.nombres, a.apellidos)}
                   </div>
                   <div className="min-w-0">

@@ -41,7 +41,7 @@ export default async function EmpleadorLayout({ children }: { children: React.Re
         rol={profile.rol}
         rolesDisponibles={rolesDisponibles}
       />
-      <main className="flex-1 overflow-x-hidden bg-slate-50">
+      <main className="flex-1 overflow-x-hidden">
         <div className="mx-auto max-w-5xl px-6 py-8">{children}</div>
       </main>
     </div>

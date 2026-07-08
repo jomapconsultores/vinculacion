@@ -35,11 +35,11 @@ const KPI = ({
   etiqueta: string;
   color: string;
 }) => (
-  <div className="card p-5">
-    <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-lg ${color}`}>
+  <div className="card card-hover p-5">
+    <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-xl ring-1 ring-inset ring-black/5 ${color}`}>
       <Icon className="h-5 w-5" />
     </div>
-    <p className="text-3xl font-bold text-slate-900">{valor}</p>
+    <p className="text-3xl font-bold tracking-tight tabular-nums text-slate-900">{valor}</p>
     <p className="mt-1 text-sm text-slate-500">{etiqueta}</p>
   </div>
 );

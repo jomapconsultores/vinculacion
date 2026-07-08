@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/server";
-import { BadgeCheck, ShieldX, HeartHandshake, Download } from "lucide-react";
+import { BadgeCheck, ShieldX, Download } from "lucide-react";
+import { Logo } from "@/components/Logo";
 
 export const dynamic = "force-dynamic";
 
@@ -21,13 +22,10 @@ export default async function VerificarPage({ params }: { params: { codigo: stri
   const fallo = !d && !!error;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">
+    <div className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-lg">
-        <div className="mb-6 flex items-center justify-center gap-2 font-semibold text-blue-900">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-900 text-white">
-            <HeartHandshake className="h-5 w-5" />
-          </div>
-          Proyecto Conecta
+        <div className="mb-6 flex justify-center">
+          <Logo size="md" />
         </div>
 
         <div className="card overflow-hidden">

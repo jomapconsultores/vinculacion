@@ -136,7 +136,7 @@ export default async function EmpleabilidadPage() {
                       : 0;
                     const col = colorInsercion(tasa);
                     return (
-                      <tr key={c.id} className="hover:bg-slate-50">
+                      <tr key={c.id} className="transition-colors hover:bg-blue-50/50">
                         <td className="px-4 py-3">
                           <p className="font-medium text-slate-900">{c.carrera}</p>
                           {c.facultad && (

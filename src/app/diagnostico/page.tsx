@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { HeartHandshake, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { LogoMark } from "@/components/Logo";
 
 type Check = { nombre: string; ok: boolean | null; detalle?: string };
 
@@ -97,12 +98,10 @@ export default function DiagnosticoPage() {
   }, []);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <div className="flex min-h-screen items-center justify-center px-4">
       <div className="card w-full max-w-md p-8">
-        <div className="mb-6 flex items-center gap-2 font-semibold text-blue-900">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-900 text-white">
-            <HeartHandshake className="h-5 w-5" />
-          </div>
+        <div className="mb-6 flex items-center gap-2.5 font-semibold text-blue-950">
+          <LogoMark size={34} />
           Diagnóstico de conexión
         </div>
 

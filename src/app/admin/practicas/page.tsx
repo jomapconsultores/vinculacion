@@ -120,7 +120,7 @@ export default async function PracticasPage({ searchParams }: { searchParams: { 
                   const pct = porcentajeCumplimiento(cumpl, plan);
                   const completa = pct >= 100;
                   return (
-                    <tr key={p.id} className="border-b border-slate-100 last:border-0">
+                    <tr key={p.id} className="border-b border-slate-100 transition-colors last:border-0 hover:bg-blue-50/50">
                       <td className="px-4 py-3 font-medium text-slate-800">
                         {p.estudiante_nombre ?? "—"}
                       </td>

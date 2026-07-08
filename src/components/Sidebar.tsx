@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { HeartHandshake, LogOut, Menu, X, Settings, ChevronDown, Repeat } from "lucide-react";
+import { LogOut, Menu, X, Settings, ChevronDown, Repeat } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { iniciales } from "@/lib/utils";
 
 // `group` clasifica el ítem dentro de un módulo del menú (ej. "Servicios y
@@ -29,14 +30,7 @@ function agruparItems(items: NavItem[]): { group: string | null; items: NavItem[
 export type RolDisponible = { rol: string; label: string };
 
 function Marca() {
-  return (
-    <div className="flex items-center gap-2 font-semibold text-blue-900">
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-900 text-white">
-        <HeartHandshake className="h-5 w-5" />
-      </div>
-      Conecta
-    </div>
-  );
+  return <Logo size="sm" />;
 }
 
 function rutaParaRol(rol: string) {
@@ -175,7 +169,7 @@ function Contenido({
 
       <div className="border-t border-slate-200 p-3">
         <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-700">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-900 ring-1 ring-inset ring-blue-100">
             {iniciales(nombre, apellido)}
           </div>
           <div className="min-w-0 flex-1">

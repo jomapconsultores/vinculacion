@@ -89,17 +89,17 @@ export default async function DashboardHome() {
 
       {/* Accesos rápidos */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <Link href="/dashboard/cv" className="card group p-5 transition hover:shadow-md">
+        <Link href="/dashboard/cv" className="card card-hover group p-5">
           <FileText className="h-7 w-7 text-blue-700" />
           <h3 className="mt-3 font-semibold text-slate-900">Mi CV inteligente</h3>
           <p className="mt-1 text-sm text-slate-500">Genera y mejora tu hoja de vida con IA.</p>
         </Link>
-        <Link href="/dashboard/empleos" className="card group p-5 transition hover:shadow-md">
+        <Link href="/dashboard/empleos" className="card card-hover group p-5">
           <Briefcase className="h-7 w-7 text-teal-600" />
           <h3 className="mt-3 font-semibold text-slate-900">Bolsa de empleo</h3>
           <p className="mt-1 text-sm text-slate-500">Postula y revisa tu match de competencias.</p>
         </Link>
-        <Link href="/dashboard/competencias" className="card group p-5 transition hover:shadow-md">
+        <Link href="/dashboard/competencias" className="card card-hover group p-5">
           <Award className="h-7 w-7 text-violet-600" />
           <h3 className="mt-3 font-semibold text-slate-900">Competencias</h3>
           <p className="mt-1 text-sm text-slate-500">

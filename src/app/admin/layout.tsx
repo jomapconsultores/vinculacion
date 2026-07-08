@@ -88,7 +88,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         rol={profile.rol}
         rolesDisponibles={rolesDisponibles}
       />
-      <main className="flex-1 overflow-x-hidden bg-slate-50">
+      <main className="flex-1 overflow-x-hidden">
         <div className="mx-auto max-w-6xl px-6 py-8">{children}</div>
       </main>
     </div>

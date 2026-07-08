@@ -55,7 +55,7 @@ export default async function EmpleosPage() {
         {(empleos ?? []).map((e: any) => {
           const post = postByEmpleo.get(e.id);
           return (
-            <Link key={e.id} href={`/dashboard/empleos/${e.id}`} className="card block p-6 transition hover:shadow-md">
+            <Link key={e.id} href={`/dashboard/empleos/${e.id}`} className="card card-hover block p-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">

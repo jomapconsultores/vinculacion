@@ -4,7 +4,8 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { PasswordInput } from "@/components/PasswordInput";
-import { HeartHandshake, CheckCircle2, Loader2, MailCheck, ShieldAlert, GraduationCap } from "lucide-react";
+import { CheckCircle2, Loader2, MailCheck, ShieldAlert, GraduationCap } from "lucide-react";
+import { Logo } from "@/components/Logo";
 
 type Rol = "estudiante" | "profesional" | "empleador" | "autoridad";
 const ROLES: { id: Rol; label: string }[] = [
@@ -116,6 +117,9 @@ function RegisterForm() {
 
   return (
     <div className="card mx-auto max-w-md p-8">
+      <div className="mb-6">
+        <Logo size="md" />
+      </div>
       <h1 className="text-xl font-bold text-slate-900">Crear cuenta</h1>
       <p className="mt-1 text-sm text-slate-500">Elige tu nivel de acceso.</p>
 
@@ -210,7 +214,7 @@ function RegisterForm() {
         {error && <p className="rounded-lg bg-red-50 p-2 text-sm text-red-600">{error}</p>}
 
         <button className="btn-primary w-full" disabled={loading}>
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <HeartHandshake className="h-4 w-4" />}
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <GraduationCap className="h-4 w-4" />}
           Crear cuenta
         </button>
       </form>
@@ -224,7 +228,7 @@ function RegisterForm() {
 
 export default function RegisterPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">
+    <div className="flex min-h-screen items-center justify-center px-4 py-10">
       <Suspense fallback={null}>
         <RegisterForm />
       </Suspense>

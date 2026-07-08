@@ -9,6 +9,7 @@ import {
   Sparkles,
   ArrowRight,
 } from "lucide-react";
+import { Logo } from "@/components/Logo";
 
 const pilares = [
   {
@@ -49,12 +50,7 @@ export default function Home() {
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2 font-semibold text-blue-900">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-900 text-white">
-              <HeartHandshake className="h-5 w-5" />
-            </div>
-            Proyecto Conecta
-          </div>
+          <Logo />
           <nav className="flex items-center gap-2">
             <Link href="/login" className="btn-ghost">Ingresar</Link>
             <Link href="/register" className="btn-primary">Crear cuenta</Link>
@@ -92,7 +88,7 @@ export default function Home() {
         </p>
         <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {pilares.map((p) => (
-            <div key={p.titulo} className="card p-6">
+            <div key={p.titulo} className="card card-hover p-6">
               <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-lg ${p.color}`}>
                 <p.icon className="h-6 w-6" />
               </div>

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
 import { CuentaForm } from "@/components/CuentaForm";
-import { ArrowLeft, HeartHandshake } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { Logo } from "@/components/Logo";
 
 export const dynamic = "force-dynamic";
 
@@ -14,15 +15,10 @@ export default async function CuentaPage() {
     : "/dashboard";
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
+    <div className="min-h-screen">
+      <header className="border-b border-slate-200 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2 font-semibold text-blue-900">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-900 text-white">
-              <HeartHandshake className="h-5 w-5" />
-            </div>
-            Conecta
-          </div>
+          <Logo size="sm" />
           <Link href={inicio} className="btn-ghost text-slate-500">
             <ArrowLeft className="h-4 w-4" /> Volver
           </Link>

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { HeartHandshake, Loader2, MailCheck, KeyRound } from "lucide-react";
+import { Loader2, MailCheck, KeyRound } from "lucide-react";
+import { Logo } from "@/components/Logo";
 
 export default function RecuperarPage() {
   const [email, setEmail] = useState("");
@@ -30,13 +31,10 @@ export default function RecuperarPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <div className="flex min-h-screen items-center justify-center px-4">
       <div className="card w-full max-w-md p-8">
-        <div className="mb-6 flex items-center gap-2 font-semibold text-blue-900">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-900 text-white">
-            <HeartHandshake className="h-5 w-5" />
-          </div>
-          Proyecto Conecta
+        <div className="mb-6">
+          <Logo size="md" />
         </div>
 
         {enviado ? (

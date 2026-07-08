@@ -54,7 +54,7 @@ export default async function EmpleosPage() {
               <Link
                 key={e.id}
                 href={`/empleador/empleos/${e.id}`}
-                className="card flex items-center justify-between p-5 transition hover:border-blue-300 hover:shadow"
+                className="card card-hover flex items-center justify-between p-5"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">

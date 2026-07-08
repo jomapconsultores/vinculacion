@@ -129,39 +129,39 @@ export default async function IndicadoresPage() {
 
       {/* Indicadores destacados */}
       <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div className="card p-5">
-          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-rose-50 text-rose-700">
+        <div className="card card-hover p-5">
+          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl ring-1 ring-inset ring-black/5 bg-rose-50 text-rose-700">
             <TrendingUp className="h-5 w-5" />
           </div>
-          <p className="text-3xl font-bold text-slate-900">{tasaInsercion}%</p>
+          <p className="text-3xl font-bold tracking-tight tabular-nums text-slate-900">{tasaInsercion}%</p>
           <p className="mt-1 text-sm text-slate-500">Tasa de inserción laboral</p>
           <p className="mt-1 text-xs text-slate-400">
             {indicadores.contratados} contratados de {indicadores.total_graduados} graduados
           </p>
         </div>
-        <div className="card p-5">
-          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-violet-50 text-violet-700">
+        <div className="card card-hover p-5">
+          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl ring-1 ring-inset ring-black/5 bg-violet-50 text-violet-700">
             <Award className="h-5 w-5" />
           </div>
-          <p className="text-3xl font-bold text-slate-900">
+          <p className="text-3xl font-bold tracking-tight tabular-nums text-slate-900">
             {indicadores.competencias_avaladas}
           </p>
           <p className="mt-1 text-sm text-slate-500">Competencias avaladas</p>
           <p className="mt-1 text-xs text-slate-400">Certificadas por la universidad</p>
         </div>
-        <div className="card p-5">
-          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700">
+        <div className="card card-hover p-5">
+          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl ring-1 ring-inset ring-black/5 bg-cyan-50 text-cyan-700">
             <Send className="h-5 w-5" />
           </div>
-          <p className="text-3xl font-bold text-slate-900">{totalPost}</p>
+          <p className="text-3xl font-bold tracking-tight tabular-nums text-slate-900">{totalPost}</p>
           <p className="mt-1 text-sm text-slate-500">Postulaciones registradas</p>
           <p className="mt-1 text-xs text-slate-400">Actividad de inserción laboral</p>
         </div>
-        <div className="card p-5">
-          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
+        <div className="card card-hover p-5">
+          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl ring-1 ring-inset ring-black/5 bg-amber-50 text-amber-700">
             <HeartHandshake className="h-5 w-5" />
           </div>
-          <p className="text-3xl font-bold text-slate-900">{ejecucionPromedio}%</p>
+          <p className="text-3xl font-bold tracking-tight tabular-nums text-slate-900">{ejecucionPromedio}%</p>
           <p className="mt-1 text-sm text-slate-500">Ejecución promedio de servicios</p>
           <p className="mt-1 text-xs text-slate-400">
             Promedio de {servicios.length} servicios
