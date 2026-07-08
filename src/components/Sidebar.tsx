@@ -34,7 +34,25 @@ function Marca() {
 }
 
 function rutaParaRol(rol: string) {
-  return rol === "empleador" ? "/empleador" : "/dashboard";
+  const r = rol.toLowerCase();
+  if (r === "empleador") return "/empleador";
+  // admin/autoridad van directo a /admin: evita el salto extra
+  // /dashboard -> (redirect del servidor) -> /admin, que hacía más lento el cambio.
+  if (r === "admin" || r === "autoridad") return "/admin";
+  return "/dashboard";
+}
+
+// Etiqueta y color del rol para mostrarlo junto al nombre del usuario.
+const ROL_INFO: Record<string, { label: string; badge: string }> = {
+  estudiante: { label: "Estudiante", badge: "bg-amber-100 text-amber-800" },
+  profesional: { label: "Profesional", badge: "bg-blue-100 text-blue-800" },
+  empleador: { label: "Empleador", badge: "bg-emerald-100 text-emerald-800" },
+  autoridad: { label: "Autoridad", badge: "bg-purple-100 text-purple-800" },
+  admin: { label: "Administrador", badge: "bg-slate-800 text-white" },
+};
+
+function infoRol(rol: string) {
+  return ROL_INFO[rol.toLowerCase()] ?? { label: rol, badge: "bg-slate-100 text-slate-600" };
 }
 
 function SelectorRol({ rol, rolesDisponibles }: { rol: string; rolesDisponibles: RolDisponible[] }) {
@@ -174,7 +192,7 @@ function Contenido({
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-slate-800">{nombre} {apellido}</p>
-            <p className="text-xs capitalize text-slate-400">{rol}</p>
+            <span className={`badge mt-1 ${infoRol(rol).badge}`}>{infoRol(rol).label}</span>
           </div>
         </div>
         <Link

@@ -23,25 +23,14 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
-  const { data: yo } = await supabase
-    .from("profiles")
-    .select("rol, autoservicio_staff")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  // Coherente con el trigger de BD protect_profile_privileges (0034): quien ya
-  // es staff (admin/autoridad) está exento de la protección anti-escalamiento y
-  // puede cambiar libremente entre sus roles; un usuario no-staff solo puede
-  // autoservicio-cambiarse a un rol de staff si tiene la excepción
-  // autoservicio_staff. En ambos casos, más abajo se exige que el rol destino
-  // esté realmente en roles_asignados. Antes el endpoint exigía
-  // autoservicio_staff incluso a usuarios staff, devolviendo "Rol inválido"
-  // donde la BD sí habría permitido el cambio.
-  const esStaffActual = yo?.rol === "autoridad" || yo?.rol === "admin";
-  const permiteStaff = esStaffActual || !!yo?.autoservicio_staff;
-
+  // Cualquier persona puede cambiar su rol activo a CUALQUIER rol que ya tenga
+  // otorgado en roles_asignados —sea de staff o no—. Los roles de staff
+  // (autoridad/admin) solo llegan a roles_asignados con aprobación del
+  // administrador (solicitudes_rol, 0033), así que la pertenencia a esa tabla
+  // —verificada más abajo— es la autoridad real. Aquí solo se valida que el rol
+  // sea uno conocido. Coherente con el trigger protect_profile_privileges (0035).
   const { rol } = await req.json().catch(() => ({}));
-  if (!esRolPermitido(rol, permiteStaff)) {
+  if (!esRolPermitido(rol, true)) {
     return NextResponse.json({ error: "Rol inválido." }, { status: 400 });
   }
 
