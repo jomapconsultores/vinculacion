@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireModulo } from "@/lib/auth";
 import {
   Download,
+  FileSpreadsheet,
   GraduationCap,
   Users,
   BadgeCheck,
@@ -68,10 +69,16 @@ export default async function EmpleabilidadPage() {
             evidencia para los procesos de acreditación institucional (Pilar 4).
           </p>
         </div>
-        <a href="/api/admin/informe" className="btn-primary shrink-0">
-          <Download className="h-4 w-4" />
-          Descargar informe (PDF)
-        </a>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <a href="/api/admin/informe-excel" className="btn-outline">
+            <FileSpreadsheet className="h-4 w-4" />
+            Excel
+          </a>
+          <a href="/api/admin/informe" className="btn-primary">
+            <Download className="h-4 w-4" />
+            Informe (PDF)
+          </a>
+        </div>
       </header>
 
       {/* Empleabilidad por carrera */}
