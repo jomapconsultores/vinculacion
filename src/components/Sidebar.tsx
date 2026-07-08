@@ -157,6 +157,17 @@ function Contenido({
         )}
       </div>
 
+      {/* Identidad del usuario (arriba): nombre y, justo debajo, el rol activo. */}
+      <div className="flex items-center gap-3 border-b border-slate-200 px-4 py-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-900 ring-1 ring-inset ring-blue-100">
+          {iniciales(nombre, apellido)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-slate-800">{nombre} {apellido}</p>
+          <span className={`badge mt-1 ${infoRol(rol).badge}`}>{infoRol(rol).label}</span>
+        </div>
+      </div>
+
       <nav className="flex-1 space-y-3 overflow-y-auto p-3">
         {agruparItems(items).map((bloque, i) => (
           <div key={bloque.group ?? `_sin-grupo-${i}`} className="space-y-1">
@@ -186,15 +197,6 @@ function Contenido({
       </nav>
 
       <div className="border-t border-slate-200 p-3">
-        <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-900 ring-1 ring-inset ring-blue-100">
-            {iniciales(nombre, apellido)}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-slate-800">{nombre} {apellido}</p>
-            <span className={`badge mt-1 ${infoRol(rol).badge}`}>{infoRol(rol).label}</span>
-          </div>
-        </div>
         <Link
           href="/cuenta"
           onClick={onNavigate}
