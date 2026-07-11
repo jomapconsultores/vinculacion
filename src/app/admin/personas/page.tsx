@@ -136,24 +136,22 @@ export default async function PersonasPage({
                     </p>
                   </div>
                 </div>
-                {p.tipo === "cuenta" && <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />}
+                <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
               </>
             );
 
-            // Solo las cuentas tienen expediente; los graduados importados se
-            // gestionan desde el módulo Alumni.
-            return p.tipo === "cuenta" ? (
+            // Las cuentas abren su expediente; los graduados importados abren
+            // su ficha en el módulo Alumni.
+            const destino =
+              p.tipo === "cuenta" ? `/admin/personas/${p.ref}` : `/admin/alumni/${p.ref}`;
+            return (
               <Link
-                key={`c-${p.ref}`}
-                href={`/admin/personas/${p.ref}`}
+                key={`${p.tipo}-${p.ref}`}
+                href={destino}
                 className="card card-hover flex items-center justify-between gap-3 p-4"
               >
                 {contenido}
               </Link>
-            ) : (
-              <div key={`a-${p.ref}`} className="card flex items-center justify-between gap-3 p-4">
-                {contenido}
-              </div>
             );
           })
         )}

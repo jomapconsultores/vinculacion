@@ -13,6 +13,8 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  ChevronRight,
+  ListFilter,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +46,20 @@ const ETIQUETA_GENERO: Record<string, string> = {
   otro: "Otro",
   "sin datos": "Sin datos",
 };
+
+const ETIQUETA_NIVEL: Record<string, string> = {
+  PROFESIONAL: "Profesional",
+  ESPECIALISTA: "Especialista",
+  MAESTRIA: "Maestría",
+  "SIN DATOS": "Sin nivel",
+};
+
+// Construye el enlace al listado filtrado de graduados.
+function href(filtro: Record<string, string | number>): string {
+  const params: Record<string, string> = {};
+  for (const [k, v] of Object.entries(filtro)) params[k] = String(v);
+  return `/admin/alumni/graduados?${new URLSearchParams(params).toString()}`;
+}
 
 export default async function AlumniPage() {
   await requireModulo("alumni");
@@ -91,9 +107,8 @@ export default async function AlumniPage() {
             <GraduationCap className="h-6 w-6 text-blue-700" /> Alumni
           </h1>
           <p className="mt-1 max-w-3xl text-slate-500">
-            Registro depurado de graduados: importación del reporte institucional, actualización de
-            datos por los propios graduados y estadísticas por facultad, carrera, año, género,
-            nivel y situación ocupacional.
+            Registro depurado de graduados. Haz clic en cualquier grupo (una facultad, un año, un
+            género, un nivel…) para ver el listado de esos graduados y abrir su ficha.
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
@@ -150,9 +165,22 @@ export default async function AlumniPage() {
         </div>
       ) : (
         <>
-          {/* KPIs */}
+          {/* Acceso al listado completo */}
+          <Link
+            href="/admin/alumni/graduados"
+            className="btn-outline inline-flex w-full justify-center sm:w-auto"
+          >
+            <ListFilter className="h-4 w-4" /> Ver listado completo de graduados
+          </Link>
+
+          {/* KPIs (clicables cuando corresponde a un filtro) */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Kpi icono={<Users className="h-4 w-4" />} etiqueta="Graduados" valor={tot.personas} />
+            <KpiLink
+              href="/admin/alumni/graduados"
+              icono={<Users className="h-4 w-4" />}
+              etiqueta="Graduados"
+              valor={tot.personas}
+            />
             <Kpi icono={<GraduationCap className="h-4 w-4" />} etiqueta="Títulos" valor={tot.titulos} />
             <Kpi
               icono={<Mail className="h-4 w-4" />}
@@ -174,13 +202,21 @@ export default async function AlumniPage() {
             />
             <Kpi etiqueta="Con cuenta en el sistema" valor={tot.con_cuenta} pct={pct(tot.con_cuenta, tot.personas)} />
             <Kpi etiqueta="Títulos con carrera" valor={tot.titulos_con_carrera} pct={pct(tot.titulos_con_carrera, tot.titulos)} />
-            <Kpi etiqueta="Pendientes de revisión" valor={tot.pendientes_revision} />
+            <KpiLink
+              href="/admin/alumni/actualizaciones"
+              etiqueta="Pendientes de revisión"
+              valor={tot.pendientes_revision}
+            />
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Barras
               titulo="Graduados por facultad"
-              filas={porFacultad.map((f: any) => ({ etiqueta: f.facultad, n: Number(f.graduados) }))}
+              filas={porFacultad.map((f: any) => ({
+                etiqueta: f.facultad,
+                n: Number(f.graduados),
+                href: href({ facultad: f.facultad }),
+              }))}
               color="bg-blue-600"
             />
             <Barras
@@ -188,6 +224,7 @@ export default async function AlumniPage() {
               filas={ocupacion.map((f: any) => ({
                 etiqueta: ETIQUETA_OCUPACION[f.ocupacion_categoria] ?? f.ocupacion_categoria,
                 n: Number(f.personas),
+                href: href({ ocupacion: f.ocupacion_categoria }),
               }))}
               color="bg-teal-600"
             />
@@ -196,12 +233,17 @@ export default async function AlumniPage() {
               filas={porGenero.map((f: any) => ({
                 etiqueta: ETIQUETA_GENERO[f.genero] ?? f.genero,
                 n: Number(f.personas),
+                href: href({ genero: f.genero }),
               }))}
               color="bg-violet-600"
             />
             <Barras
               titulo="Títulos por nivel de formación"
-              filas={porNivel.map((f: any) => ({ etiqueta: f.nivel, n: Number(f.titulos) }))}
+              filas={porNivel.map((f: any) => ({
+                etiqueta: ETIQUETA_NIVEL[f.nivel] ?? f.nivel,
+                n: Number(f.titulos),
+                href: href({ nivel: f.nivel }),
+              }))}
               color="bg-amber-500"
             />
           </div>
@@ -213,14 +255,18 @@ export default async function AlumniPage() {
               {(() => {
                 const max = Math.max(1, ...porAnio.map((f: any) => Number(f.titulos)));
                 return porAnio.map((f: any) => (
-                  <div key={f.anio_graduacion} className="flex min-w-[2rem] flex-col items-center gap-1">
+                  <Link
+                    key={f.anio_graduacion}
+                    href={href({ anio: f.anio_graduacion })}
+                    className="flex min-w-[2rem] flex-col items-center gap-1 rounded p-1 hover:bg-slate-50"
+                  >
                     <span className="text-[10px] text-slate-500">{f.titulos}</span>
                     <div
-                      className="w-6 rounded-t bg-blue-600"
+                      className="w-6 rounded-t bg-blue-600 transition group-hover:bg-blue-700"
                       style={{ height: `${Math.max(4, (Number(f.titulos) / max) * 120)}px` }}
                     />
                     <span className="text-[10px] text-slate-400">{f.anio_graduacion}</span>
-                  </div>
+                  </Link>
                 ));
               })()}
             </div>
@@ -232,24 +278,22 @@ export default async function AlumniPage() {
               <h2 className="mb-3 font-semibold text-slate-800">
                 Posgrados en otras instituciones (top 10)
               </h2>
-              <table className="w-full text-left text-sm">
-                <thead className="text-xs uppercase tracking-wide text-slate-400">
-                  <tr>
-                    <th className="py-1.5">Institución</th>
-                    <th className="py-1.5 text-right">Graduados</th>
-                    <th className="py-1.5 text-right">Títulos</th>
-                  </tr>
-                </thead>
-                <tbody className="text-slate-600">
-                  {externos.map((f: any) => (
-                    <tr key={f.instituto} className="border-t border-slate-100">
-                      <td className="py-1.5">{f.instituto}</td>
-                      <td className="py-1.5 text-right">{f.graduados}</td>
-                      <td className="py-1.5 text-right">{f.titulos}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="divide-y divide-slate-100">
+                {externos.map((f: any) => (
+                  <Link
+                    key={f.instituto}
+                    href={href({ instituto: f.instituto })}
+                    className="flex items-center justify-between gap-3 py-2 text-sm hover:bg-slate-50"
+                  >
+                    <span className="min-w-0 truncate text-slate-700">{f.instituto}</span>
+                    <span className="flex shrink-0 items-center gap-3 text-slate-500">
+                      <span>{f.graduados} grad.</span>
+                      <span>{f.titulos} tít.</span>
+                      <ChevronRight className="h-4 w-4 text-slate-300" />
+                    </span>
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
         </>
@@ -286,34 +330,73 @@ function Kpi({
   );
 }
 
+function KpiLink({
+  href,
+  etiqueta,
+  valor,
+  icono,
+}: {
+  href: string;
+  etiqueta: string;
+  valor: number;
+  icono?: React.ReactNode;
+}) {
+  return (
+    <Link href={href} className="card card-hover p-4">
+      <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
+        {icono} {etiqueta}
+      </p>
+      <p className="mt-1 flex items-center gap-1 text-2xl font-bold text-slate-900">
+        {valor.toLocaleString("es-EC")}
+        <ChevronRight className="h-4 w-4 text-slate-300" />
+      </p>
+    </Link>
+  );
+}
+
 function Barras({
   titulo,
   filas,
   color,
 }: {
   titulo: string;
-  filas: { etiqueta: string; n: number }[];
+  filas: { etiqueta: string; n: number; href?: string }[];
   color: string;
 }) {
   const max = Math.max(1, ...filas.map((f) => f.n));
   return (
     <div className="card p-5">
       <h2 className="mb-4 font-semibold text-slate-800">{titulo}</h2>
-      <div className="space-y-2.5">
-        {filas.map((f) => (
-          <div key={f.etiqueta}>
-            <div className="mb-0.5 flex items-center justify-between text-sm">
-              <span className="text-slate-600">{f.etiqueta}</span>
-              <span className="font-medium text-slate-800">{f.n.toLocaleString("es-EC")}</span>
+      <div className="space-y-1">
+        {filas.map((f) => {
+          const contenido = (
+            <>
+              <div className="mb-0.5 flex items-center justify-between text-sm">
+                <span className="text-slate-600 group-hover:text-slate-900">{f.etiqueta}</span>
+                <span className="font-medium text-slate-800">{f.n.toLocaleString("es-EC")}</span>
+              </div>
+              <div className="h-2 rounded-full bg-slate-100">
+                <div
+                  className={`h-2 rounded-full ${color}`}
+                  style={{ width: `${Math.max(2, (f.n / max) * 100)}%` }}
+                />
+              </div>
+            </>
+          );
+          return f.href ? (
+            <Link
+              key={f.etiqueta}
+              href={f.href}
+              className="group block rounded-lg p-1.5 transition hover:bg-slate-50"
+            >
+              {contenido}
+            </Link>
+          ) : (
+            <div key={f.etiqueta} className="p-1.5">
+              {contenido}
             </div>
-            <div className="h-2 rounded-full bg-slate-100">
-              <div
-                className={`h-2 rounded-full ${color}`}
-                style={{ width: `${Math.max(2, (f.n / max) * 100)}%` }}
-              />
-            </div>
-          </div>
-        ))}
+          );
+        })}
         {filas.length === 0 && <p className="text-sm text-slate-400">Sin datos.</p>}
       </div>
     </div>
