@@ -4,18 +4,28 @@ import { libroExcel } from "@/lib/excel";
 import { reportePdf } from "@/lib/pdf";
 
 export const runtime = "nodejs";
+export const maxDuration = 120;
 
-type PersonaRow = {
+// Fila del directorio unificado (v_personas_directorio, 0038): cuentas
+// registradas + graduados importados del módulo Alumni sin cuenta.
+type FilaDirectorio = {
+  tipo: "cuenta" | "alumni";
+  ref: string;
   nombres: string | null;
   apellidos: string | null;
   cedula: string | null;
   email: string | null;
-  rol: string | null;
-  anio_graduacion: number | null;
-  ciudad: string | null;
-  titulo: string | null;
-  origen_padron: boolean | null;
-  carreras: { nombre: string | null } | null;
+  telefono: string | null;
+  rol: string;
+  carrera: string | null;
+  titulo_reciente: string | null;
+  titulos: number | null;
+};
+
+const ETIQUETA_ROL: Record<string, string> = {
+  estudiante: "Estudiante",
+  profesional: "Profesional",
+  alumni: "Graduado (importado)",
 };
 
 export async function GET(req: Request) {
@@ -35,23 +45,29 @@ export async function GET(req: Request) {
   const autorizado = perfil ? await tieneModulo(perfil, "personas") : false;
   if (!autorizado) return new Response("Acceso denegado", { status: 403 });
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select(
-      "nombres, apellidos, cedula, email, rol, anio_graduacion, ciudad, titulo, origen_padron, carreras(nombre)"
-    )
-    .in("rol", ["estudiante", "profesional"])
-    .order("apellidos", { ascending: true });
-  if (error) {
-    console.error("[personas-reporte]", error.message);
-    return new Response("No se pudo generar el reporte de personas.", { status: 500 });
+  // Directorio completo, paginado sobre PostgREST (miles de filas).
+  const personas: FilaDirectorio[] = [];
+  const PAGINA = 1000;
+  for (let desde = 0; ; desde += PAGINA) {
+    const { data, error } = await supabase
+      .from("v_personas_directorio")
+      .select("*")
+      .order("apellidos", { ascending: true })
+      .order("nombres", { ascending: true })
+      .range(desde, desde + PAGINA - 1);
+    if (error) {
+      console.error("[personas-reporte]", error.message);
+      return new Response("No se pudo generar el reporte de personas.", { status: 500 });
+    }
+    personas.push(...((data ?? []) as FilaDirectorio[]));
+    if (!data || data.length < PAGINA) break;
   }
 
-  const personas = (data as unknown as PersonaRow[]) ?? [];
-
+  const cuentas = personas.filter((p) => p.tipo === "cuenta").length;
   const estudiantes = personas.filter((p) => p.rol === "estudiante").length;
   const profesionales = personas.filter((p) => p.rol === "profesional").length;
-  const verificados = personas.filter((p) => p.origen_padron).length;
+  const graduadosImportados = personas.filter((p) => p.tipo === "alumni").length;
+  const conEmail = personas.filter((p) => p.email).length;
 
   const generado = new Date().toLocaleString("es-EC", { dateStyle: "long", timeStyle: "short" });
 
@@ -60,41 +76,47 @@ export async function GET(req: Request) {
     "Nombres",
     "Cédula",
     "Correo",
-    "Rol",
+    "Teléfono",
+    "Tipo",
     "Carrera",
-    "Año graduación",
-    "Ciudad",
-    "Título",
-    "Verificado (padrón)",
+    "Título más reciente",
+    "Nº títulos",
   ];
   const filas: (string | number)[][] = personas.map((p) => [
     p.apellidos ?? "",
     p.nombres ?? "",
     p.cedula ?? "",
     p.email ?? "",
-    p.rol === "estudiante" ? "Estudiante" : "Profesional",
-    p.carreras?.nombre ?? "—",
-    p.anio_graduacion ?? "",
-    p.ciudad ?? "",
-    p.titulo ?? "",
-    p.origen_padron ? "Sí" : "No",
+    p.telefono ?? "",
+    ETIQUETA_ROL[p.rol] ?? p.rol,
+    p.carrera ?? "—",
+    p.titulo_reciente ?? "",
+    p.titulos ?? "",
   ]);
 
   const resumen: (string | number)[][] = [
-    ["Personas registradas", personas.length],
+    ["Personas en la base", personas.length],
+    ["Con cuenta en el sistema", cuentas],
     ["Estudiantes", estudiantes],
     ["Profesionales", profesionales],
-    ["Verificados (padrón)", verificados],
+    ["Graduados importados (sin cuenta)", graduadosImportados],
+    ["Con correo electrónico", conEmail],
   ];
 
   if (formato === "pdf") {
+    // El PDF es para imprimir: resumen + primeras 500 filas (el detalle
+    // completo de miles de personas va en el Excel).
     const bytes = await reportePdf({
       titulo: "Registro de personas",
-      subtitulo: "Estudiantes y profesionales",
+      subtitulo: "Cuentas del sistema y graduados importados",
       generado,
       secciones: [
         { titulo: "Resumen", encabezados: ["Indicador", "Valor"], filas: resumen },
-        { titulo: "Detalle de personas", encabezados, filas },
+        {
+          titulo: `Detalle de personas${personas.length > 500 ? " (primeras 500 — detalle completo en Excel)" : ""}`,
+          encabezados,
+          filas: filas.slice(0, 500),
+        },
       ],
     });
     return new Response(new Uint8Array(bytes), {
@@ -108,7 +130,7 @@ export async function GET(req: Request) {
   const buf = libroExcel([
     {
       nombre: "Resumen",
-      titulo: ["Registro de personas — Estudiantes y profesionales", `Generado: ${generado}`],
+      titulo: ["Registro de personas — Cuentas y graduados", `Generado: ${generado}`],
       encabezados: ["Indicador", "Valor"],
       filas: resumen,
     },
