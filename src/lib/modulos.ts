@@ -12,6 +12,7 @@ export const MODULOS_VALIDOS = [
   "indicadores",
   "encuestas",
   "psicometria",
+  "alumni",
 ] as const;
 
 export type Modulo = (typeof MODULOS_VALIDOS)[number];
@@ -28,4 +29,5 @@ export const MODULOS_DISPONIBLES: { value: Modulo; label: string }[] = [
   { value: "indicadores", label: "Indicadores" },
   { value: "encuestas", label: "Encuestas" },
   { value: "psicometria", label: "Psicometría" },
+  { value: "alumni", label: "Alumni" },
 ];

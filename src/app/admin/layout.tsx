@@ -17,6 +17,7 @@ const LABELS_ROL: Record<string, string> = {
 const baseItems: NavItem[] = [
   { href: "/admin", label: "Panel", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "/admin/personas", label: "Personas", icon: <Users className="h-4 w-4" />, group: "Alumni y graduados" },
+  { href: "/admin/alumni", label: "Alumni", icon: <GraduationCap className="h-4 w-4" />, group: "Alumni y graduados" },
   { href: "/admin/empleabilidad", label: "Empleabilidad", icon: <TrendingUp className="h-4 w-4" />, group: "Inserción laboral" },
   { href: "/admin/servicios", label: "Servicios", icon: <HeartHandshake className="h-4 w-4" />, group: "Servicios y prácticas" },
   { href: "/admin/practicas", label: "Prácticas", icon: <GraduationCap className="h-4 w-4" />, group: "Servicios y prácticas" },
@@ -30,6 +31,7 @@ const baseItems: NavItem[] = [
 // módulo asociado: siempre visible para cualquier autoridad aprobada.
 const MODULO_POR_HREF: Record<string, string> = {
   "/admin/personas": "personas",
+  "/admin/alumni": "alumni",
   "/admin/empleabilidad": "empleabilidad",
   "/admin/servicios": "servicios",
   "/admin/practicas": "practicas",
