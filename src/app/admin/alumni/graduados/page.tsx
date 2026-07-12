@@ -3,6 +3,8 @@ import { requireModulo } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { iniciales } from "@/lib/utils";
 import { ExportSeccion } from "@/components/alumni/ExportSeccion";
+import { GraficoComparativo, agrupar } from "@/components/alumni/GraficoComparativo";
+import { traerGraduadosFiltrados } from "@/lib/alumni";
 import {
   GraduationCap,
   Search,
@@ -11,6 +13,7 @@ import {
   ArrowLeft,
   X,
   UserCheck,
+  BarChart3,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -107,7 +110,9 @@ export default async function GraduadosPage({ searchParams }: { searchParams: Fi
   const pagina = Math.max(1, parseInt(searchParams.pagina || "1", 10) || 1);
   const q = (searchParams.q || "").trim();
 
-  const { data, error } = await supabase.rpc("alumni_filtrados", {
+  // Se trae el conjunto filtrado completo (paginado en bloques de 1000): la
+  // página visible se corta en JS y el resto alimenta el gráfico comparativo.
+  const { rows, error } = await traerGraduadosFiltrados(supabase, {
     p_genero: searchParams.genero || null,
     p_facultad: searchParams.facultad || null,
     p_carrera: searchParams.carrera || null,
@@ -121,14 +126,21 @@ export default async function GraduadosPage({ searchParams }: { searchParams: Fi
     p_verificado: searchParams.verificado ? true : null,
     p_pendiente: searchParams.pendiente ? true : null,
     p_con_cuenta: searchParams.con_cuenta ? true : null,
-    p_limit: POR_PAGINA,
-    p_offset: (pagina - 1) * POR_PAGINA,
   });
 
-  const filas = (data ?? []) as FilaGraduado[];
-  const total = filas[0]?.total_count ?? 0;
+  const todas = rows as FilaGraduado[];
+  const total = todas.length;
   const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA));
+  const desde = (pagina - 1) * POR_PAGINA;
+  const filas = todas.slice(desde, desde + POR_PAGINA);
   const chip = chipFiltro(searchParams);
+
+  // Agregados para el gráfico comparativo (sobre todo el conjunto filtrado).
+  const compGenero = agrupar(todas, (r) => ETIQUETA_GENERO[r.genero ?? "sin datos"] ?? "Sin datos");
+  const compOcupacion = agrupar(
+    todas,
+    (r) => ETIQUETA_OCUPACION[r.ocupacion_categoria] ?? r.ocupacion_categoria
+  );
 
   // Query de exportación: la misma sección "graduados" con los filtros activos
   // (todo menos la paginación), para que el PDF/Excel refleje lo que se ve.
@@ -261,6 +273,19 @@ export default async function GraduadosPage({ searchParams }: { searchParams: Fi
               Siguiente <ChevronRight className="h-4 w-4" />
             </Link>
           )}
+        </div>
+      )}
+
+      {/* Gráfico comparativo del conjunto filtrado */}
+      {total > 0 && (
+        <div>
+          <h2 className="mb-3 mt-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
+            <BarChart3 className="h-4 w-4" /> Comparativo del resultado ({total.toLocaleString("es-EC")})
+          </h2>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <GraficoComparativo titulo="Por género" filas={compGenero} color="bg-violet-600" />
+            <GraficoComparativo titulo="Por situación ocupacional" filas={compOcupacion} color="bg-teal-600" />
+          </div>
         </div>
       )}
     </div>

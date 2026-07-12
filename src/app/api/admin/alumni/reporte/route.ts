@@ -9,6 +9,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { tieneModulo } from "@/lib/auth";
+import { traerGraduadosFiltrados } from "@/lib/alumni";
 import { libroExcel, type Hoja } from "@/lib/excel";
 import { reportePdf, type SeccionPdf } from "@/lib/pdf";
 import {
@@ -237,7 +238,8 @@ export async function GET(req: Request) {
   if (seccion === "graduados") {
     const p = url.searchParams;
     const anioParam = p.get("anio");
-    const { data, error } = await supabase.rpc("alumni_filtrados", {
+    // Paginado en bloques de 1000 (tope de PostgREST) para traer TODO el conjunto.
+    const { rows: rowsRaw, error } = await traerGraduadosFiltrados(supabase, {
       p_genero: p.get("genero") || null,
       p_facultad: p.get("facultad") || null,
       p_carrera: p.get("carrera") || null,
@@ -251,14 +253,12 @@ export async function GET(req: Request) {
       p_verificado: p.get("verificado") ? true : null,
       p_pendiente: p.get("pendiente") ? true : null,
       p_con_cuenta: p.get("con_cuenta") ? true : null,
-      p_limit: 100000,
-      p_offset: 0,
     });
     if (error) {
-      console.error("[alumni/reporte] graduados:", error.message);
+      console.error("[alumni/reporte] graduados:", error);
       return new Response("No se pudo generar el listado.", { status: 500 });
     }
-    const rows = (data ?? []) as Fila[];
+    const rows = rowsRaw as Fila[];
 
     // Descripción del filtro activo para el subtítulo.
     const partes: string[] = [];

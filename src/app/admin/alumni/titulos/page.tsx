@@ -2,6 +2,8 @@ import Link from "next/link";
 import { requireModulo } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ExportSeccion } from "@/components/alumni/ExportSeccion";
+import { GraficoComparativo, agrupar } from "@/components/alumni/GraficoComparativo";
+import { traerTitulosParaComparativo } from "@/lib/alumni";
 import {
   GraduationCap,
   Search,
@@ -9,6 +11,7 @@ import {
   ChevronLeft,
   ArrowLeft,
   X,
+  BarChart3,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -44,7 +47,9 @@ export default async function TitulosPage({ searchParams }: { searchParams: Filt
   const conCarrera = !!searchParams.con_carrera;
   const desde = (pagina - 1) * POR_PAGINA;
 
-  let query = supabase
+  // Listado paginado (con detalle) + agregado ligero de todo el conjunto para
+  // el gráfico comparativo del final. Se ejecutan en paralelo.
+  let listaQuery = supabase
     .from("alumni_titulos")
     .select(
       "id, titulo, nivel_formacion, instituto, anio_graduacion, carrera_id, carreras(nombre, facultad), alumni!inner(id, cedula, nombres, apellidos, email)",
@@ -53,18 +58,25 @@ export default async function TitulosPage({ searchParams }: { searchParams: Filt
     .order("anio_graduacion", { ascending: false, nullsFirst: false })
     .range(desde, desde + POR_PAGINA - 1);
 
-  if (conCarrera) query = query.not("carrera_id", "is", null);
+  if (conCarrera) listaQuery = listaQuery.not("carrera_id", "is", null);
   if (q) {
-    query = query.or(
+    listaQuery = listaQuery.or(
       `nombres.ilike.%${q}%,apellidos.ilike.%${q}%,cedula.ilike.%${q}%`,
       { referencedTable: "alumni" }
     );
   }
 
-  const { data, count, error } = await query;
+  const [{ data, count, error }, todos] = await Promise.all([
+    listaQuery,
+    traerTitulosParaComparativo(supabase, conCarrera, q),
+  ]);
   const filas = (data ?? []) as any[];
   const total = count ?? 0;
   const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA));
+
+  // Agregados para el gráfico comparativo (sobre todo el conjunto filtrado).
+  const compNivel = agrupar(todos, (r) => ETIQUETA_NIVEL[r.nivel_formacion] ?? "Sin nivel");
+  const compFacultad = agrupar(todos, (r) => r.carreras?.facultad ?? "Sin asignar");
 
   // Query de exportación: misma sección "titulos" con el filtro con_carrera.
   const exportParams = new URLSearchParams({ seccion: "titulos" });
@@ -166,6 +178,19 @@ export default async function TitulosPage({ searchParams }: { searchParams: Filt
               Siguiente <ChevronRight className="h-4 w-4" />
             </Link>
           )}
+        </div>
+      )}
+
+      {/* Gráfico comparativo del conjunto filtrado */}
+      {todos.length > 0 && (
+        <div>
+          <h2 className="mb-3 mt-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
+            <BarChart3 className="h-4 w-4" /> Comparativo del resultado ({todos.length.toLocaleString("es-EC")})
+          </h2>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <GraficoComparativo titulo="Por nivel de formación" filas={compNivel} color="bg-amber-500" />
+            <GraficoComparativo titulo="Por facultad" filas={compFacultad} color="bg-blue-600" />
+          </div>
         </div>
       )}
     </div>
