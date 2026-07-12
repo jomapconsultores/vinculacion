@@ -246,6 +246,11 @@ export async function GET(req: Request) {
       p_ocupacion: p.get("ocupacion") || null,
       p_instituto: p.get("instituto") || null,
       p_q: (p.get("q") || "").trim() || null,
+      p_con_email: p.get("con_email") ? true : null,
+      p_con_celular: p.get("con_celular") ? true : null,
+      p_verificado: p.get("verificado") ? true : null,
+      p_pendiente: p.get("pendiente") ? true : null,
+      p_con_cuenta: p.get("con_cuenta") ? true : null,
       p_limit: 100000,
       p_offset: 0,
     });
@@ -265,6 +270,11 @@ export async function GET(req: Request) {
     if (p.get("ocupacion"))
       partes.push(`Ocupación: ${ETIQUETA_OCUPACION[p.get("ocupacion")!] ?? p.get("ocupacion")}`);
     if (p.get("instituto")) partes.push(`Institución: ${p.get("instituto")}`);
+    if (p.get("con_email")) partes.push("Con correo electrónico");
+    if (p.get("con_celular")) partes.push("Con celular");
+    if (p.get("verificado")) partes.push("Verificados por el graduado");
+    if (p.get("pendiente")) partes.push("Pendientes de revisión");
+    if (p.get("con_cuenta")) partes.push("Con cuenta en el sistema");
     if ((p.get("q") || "").trim()) partes.push(`Búsqueda: “${p.get("q")!.trim()}”`);
     const descripcion = partes.length ? partes.join(" · ") : "Todos los graduados";
 
@@ -348,7 +358,12 @@ export async function GET(req: Request) {
       console.error("[alumni/reporte] titulos:", (e as Error).message);
       return new Response("No se pudo generar el detalle de títulos.", { status: 500 });
     }
-    const subtitulo = `${detalle.length.toLocaleString("es-EC")} títulos registrados`;
+    // ?con_carrera=1 → solo títulos con carrera asignada (col 14 = Carrera).
+    const soloConCarrera = !!url.searchParams.get("con_carrera");
+    if (soloConCarrera) detalle = detalle.filter((f) => String(f[14] ?? "").trim() !== "");
+    const subtitulo = soloConCarrera
+      ? `${detalle.length.toLocaleString("es-EC")} títulos con carrera asignada`
+      : `${detalle.length.toLocaleString("es-EC")} títulos registrados`;
 
     if (formato === "excel") {
       return excelResponse(

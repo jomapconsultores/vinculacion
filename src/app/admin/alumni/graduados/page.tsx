@@ -25,6 +25,12 @@ type Filtros = {
   nivel?: string;
   ocupacion?: string;
   instituto?: string;
+  // Filtros por indicador (presencia = activo, "1").
+  con_email?: string;
+  con_celular?: string;
+  verificado?: string;
+  pendiente?: string;
+  con_cuenta?: string;
   q?: string;
   pagina?: string;
 };
@@ -78,6 +84,11 @@ function chipFiltro(f: Filtros): { campo: string; valor: string } | null {
   if (f.nivel) return { campo: "Nivel", valor: ETIQUETA_NIVEL[f.nivel] ?? f.nivel };
   if (f.ocupacion) return { campo: "Ocupación", valor: ETIQUETA_OCUPACION[f.ocupacion] ?? f.ocupacion };
   if (f.instituto) return { campo: "Institución", valor: f.instituto };
+  if (f.con_email) return { campo: "Indicador", valor: "Con correo electrónico" };
+  if (f.con_celular) return { campo: "Indicador", valor: "Con celular" };
+  if (f.verificado) return { campo: "Indicador", valor: "Verificados por el graduado" };
+  if (f.pendiente) return { campo: "Indicador", valor: "Pendientes de revisión" };
+  if (f.con_cuenta) return { campo: "Indicador", valor: "Con cuenta en el sistema" };
   return null;
 }
 
@@ -105,6 +116,11 @@ export default async function GraduadosPage({ searchParams }: { searchParams: Fi
     p_ocupacion: searchParams.ocupacion || null,
     p_instituto: searchParams.instituto || null,
     p_q: q || null,
+    p_con_email: searchParams.con_email ? true : null,
+    p_con_celular: searchParams.con_celular ? true : null,
+    p_verificado: searchParams.verificado ? true : null,
+    p_pendiente: searchParams.pendiente ? true : null,
+    p_con_cuenta: searchParams.con_cuenta ? true : null,
     p_limit: POR_PAGINA,
     p_offset: (pagina - 1) * POR_PAGINA,
   });
@@ -131,6 +147,11 @@ export default async function GraduadosPage({ searchParams }: { searchParams: Fi
     ["nivel", searchParams.nivel],
     ["ocupacion", searchParams.ocupacion],
     ["instituto", searchParams.instituto],
+    ["con_email", searchParams.con_email],
+    ["con_celular", searchParams.con_celular],
+    ["verificado", searchParams.verificado],
+    ["pendiente", searchParams.pendiente],
+    ["con_cuenta", searchParams.con_cuenta],
   ];
 
   return (

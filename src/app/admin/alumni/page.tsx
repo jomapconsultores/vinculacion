@@ -200,30 +200,48 @@ export default async function AlumniPage() {
               valor={tot.titulos}
               exportar="seccion=titulos"
             />
-            <Kpi
+            <KpiLink
+              href={href({ con_email: 1 })}
               icono={<Mail className="h-4 w-4" />}
               etiqueta="Con correo"
               valor={tot.con_email}
               pct={pct(tot.con_email, tot.personas)}
+              exportar={expGrad({ con_email: 1 })}
             />
-            <Kpi
+            <KpiLink
+              href={href({ con_celular: 1 })}
               icono={<Smartphone className="h-4 w-4" />}
               etiqueta="Con celular"
               valor={tot.con_celular}
               pct={pct(tot.con_celular, tot.personas)}
+              exportar={expGrad({ con_celular: 1 })}
             />
-            <Kpi
+            <KpiLink
+              href={href({ verificado: 1 })}
               icono={<ShieldCheck className="h-4 w-4" />}
               etiqueta="Verificados por el graduado"
               valor={tot.verificados}
               pct={pct(tot.verificados, tot.personas)}
+              exportar={expGrad({ verificado: 1 })}
             />
-            <Kpi etiqueta="Con cuenta en el sistema" valor={tot.con_cuenta} pct={pct(tot.con_cuenta, tot.personas)} />
-            <Kpi etiqueta="Títulos con carrera" valor={tot.titulos_con_carrera} pct={pct(tot.titulos_con_carrera, tot.titulos)} />
             <KpiLink
-              href="/admin/alumni/actualizaciones"
+              href={href({ con_cuenta: 1 })}
+              etiqueta="Con cuenta en el sistema"
+              valor={tot.con_cuenta}
+              pct={pct(tot.con_cuenta, tot.personas)}
+              exportar={expGrad({ con_cuenta: 1 })}
+            />
+            <Kpi
+              etiqueta="Títulos con carrera"
+              valor={tot.titulos_con_carrera}
+              pct={pct(tot.titulos_con_carrera, tot.titulos)}
+              exportar="seccion=titulos&con_carrera=1"
+            />
+            <KpiLink
+              href={href({ pendiente: 1 })}
               etiqueta="Pendientes de revisión"
               valor={tot.pendientes_revision}
+              exportar={expGrad({ pendiente: 1 })}
             />
           </div>
 
@@ -378,12 +396,14 @@ function KpiLink({
   etiqueta,
   valor,
   icono,
+  pct,
   exportar,
 }: {
   href: string;
   etiqueta: string;
   valor: number;
   icono?: React.ReactNode;
+  pct?: number;
   exportar?: string;
 }) {
   return (
@@ -399,6 +419,7 @@ function KpiLink({
         </p>
         <p className="mt-1 flex items-center gap-1 text-2xl font-bold text-slate-900">
           {valor.toLocaleString("es-EC")}
+          {pct !== undefined && <span className="text-sm font-medium text-slate-400">{pct}%</span>}
           <ChevronRight className="h-4 w-4 text-slate-300" />
         </p>
       </Link>
