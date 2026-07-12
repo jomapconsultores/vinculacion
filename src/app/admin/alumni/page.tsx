@@ -194,7 +194,8 @@ export default async function AlumniPage() {
               valor={tot.personas}
               exportar="seccion=graduados"
             />
-            <Kpi
+            <KpiLink
+              href="/admin/alumni/titulos"
               icono={<GraduationCap className="h-4 w-4" />}
               etiqueta="Títulos"
               valor={tot.titulos}
@@ -231,7 +232,8 @@ export default async function AlumniPage() {
               pct={pct(tot.con_cuenta, tot.personas)}
               exportar={expGrad({ con_cuenta: 1 })}
             />
-            <Kpi
+            <KpiLink
+              href="/admin/alumni/titulos?con_carrera=1"
               etiqueta="Títulos con carrera"
               valor={tot.titulos_con_carrera}
               pct={pct(tot.titulos_con_carrera, tot.titulos)}
@@ -360,37 +362,6 @@ function pct(n: number, total: number): number | undefined {
   return total > 0 ? Math.round((n / total) * 100) : undefined;
 }
 
-function Kpi({
-  etiqueta,
-  valor,
-  pct,
-  icono,
-  exportar,
-}: {
-  etiqueta: string;
-  valor: number;
-  pct?: number;
-  icono?: React.ReactNode;
-  exportar?: string;
-}) {
-  return (
-    <div className="card relative p-4">
-      {exportar && (
-        <div className="absolute right-2 top-2">
-          <ExportFila params={exportar} etiqueta={etiqueta} />
-        </div>
-      )}
-      <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
-        {icono} {etiqueta}
-      </p>
-      <p className="mt-1 text-2xl font-bold text-slate-900">
-        {valor.toLocaleString("es-EC")}
-        {pct !== undefined && <span className="ml-2 text-sm font-medium text-slate-400">{pct}%</span>}
-      </p>
-    </div>
-  );
-}
-
 function KpiLink({
   href,
   etiqueta,
@@ -407,20 +378,20 @@ function KpiLink({
   exportar?: string;
 }) {
   return (
-    <div className="relative">
+    <div className="relative h-full">
       {exportar && (
         <div className="absolute right-2 top-2 z-10">
           <ExportFila params={exportar} etiqueta={etiqueta} />
         </div>
       )}
-      <Link href={href} className="card card-hover block p-4">
-        <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
+      <Link href={href} className="card card-hover flex h-full flex-col p-4">
+        <p className="flex items-start gap-1.5 pr-8 text-xs font-medium uppercase tracking-wide text-slate-400">
           {icono} {etiqueta}
         </p>
-        <p className="mt-1 flex items-center gap-1 text-2xl font-bold text-slate-900">
+        <p className="mt-auto flex items-center gap-1 pt-2 text-2xl font-bold text-slate-900">
           {valor.toLocaleString("es-EC")}
           {pct !== undefined && <span className="text-sm font-medium text-slate-400">{pct}%</span>}
-          <ChevronRight className="h-4 w-4 text-slate-300" />
+          <ChevronRight className="ml-auto h-4 w-4 text-slate-300" />
         </p>
       </Link>
     </div>
