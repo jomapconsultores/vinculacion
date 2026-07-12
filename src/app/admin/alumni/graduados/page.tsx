@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireModulo } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { iniciales } from "@/lib/utils";
+import { ExportSeccion } from "@/components/alumni/ExportSeccion";
 import {
   GraduationCap,
   Search,
@@ -113,6 +114,14 @@ export default async function GraduadosPage({ searchParams }: { searchParams: Fi
   const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA));
   const chip = chipFiltro(searchParams);
 
+  // Query de exportación: la misma sección "graduados" con los filtros activos
+  // (todo menos la paginación), para que el PDF/Excel refleje lo que se ve.
+  const exportParams = new URLSearchParams({ seccion: "graduados" });
+  for (const [k, v] of Object.entries(searchParams)) {
+    if (k === "pagina" || !v) continue;
+    exportParams.set(k, String(v));
+  }
+
   // Búsqueda: los inputs ocultos preservan el filtro activo al buscar.
   const filtrosOcultos: [string, string | undefined][] = [
     ["genero", searchParams.genero],
@@ -133,9 +142,12 @@ export default async function GraduadosPage({ searchParams }: { searchParams: Fi
         >
           <ArrowLeft className="h-4 w-4" /> Volver al panel de Alumni
         </Link>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
-          <GraduationCap className="h-6 w-6 text-blue-700" /> Graduados
-        </h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
+            <GraduationCap className="h-6 w-6 text-blue-700" /> Graduados
+          </h1>
+          <ExportSeccion params={exportParams.toString()} etiqueta="Graduados (filtro actual)" />
+        </div>
       </div>
 
       {/* Chip de filtro activo */}

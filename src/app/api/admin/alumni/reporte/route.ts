@@ -1,7 +1,11 @@
-// Reporte de alumni en tres formatos: ?formato=excel | pdf | docx
-// - excel: agregados + detalle completo (una fila por título).
-// - pdf:   agregados + top-N (pensado para imprimir).
-// - docx:  informe formateado editable en Word.
+// Reporte de alumni en varios formatos: ?formato=excel | pdf | docx
+// - Sin ?seccion: informe completo (agregados + detalle) en excel/pdf/docx.
+// - Con ?seccion=<id>: SOLO esa sección/ítem (excel de una hoja o pdf de una
+//   sección). Ids: resumen | facultad | carrera | anio | genero | nivel |
+//   ocupacion | externos | graduados.
+// - seccion=graduados exporta el listado de personas honrando los filtros
+//   activos del drill-down (genero, facultad, carrera, anio, nivel, ocupacion,
+//   instituto, q), igual que /admin/alumni/graduados.
 
 import { createClient } from "@/lib/supabase/server";
 import { tieneModulo } from "@/lib/auth";
@@ -35,6 +39,179 @@ const ETIQUETA_OCUPACION: Record<string, string> = {
   sin_datos: "Sin datos",
 };
 
+const ETIQUETA_GENERO: Record<string, string> = {
+  masculino: "Masculino",
+  femenino: "Femenino",
+  otro: "Otro",
+  "sin datos": "Sin datos",
+};
+
+const ETIQUETA_NIVEL: Record<string, string> = {
+  PROFESIONAL: "Profesional",
+  ESPECIALISTA: "Especialista",
+  MAESTRIA: "Maestría",
+  "SIN DATOS": "Sin nivel",
+};
+
+// Definición de una sección exportable: datos + metadatos de presentación.
+type Def = {
+  id: string;
+  nombre: string; // pestaña Excel
+  titulo: string; // encabezado en PDF / hoja
+  encabezados: string[];
+  filas: (string | number)[][];
+};
+
+// Respuestas de archivo, para no repetir cabeceras.
+function excelResponse(hojas: Hoja[], slug: string): Response {
+  const buf = libroExcel(hojas);
+  return new Response(new Uint8Array(buf), {
+    headers: {
+      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": `attachment; filename="${slug}.xlsx"`,
+    },
+  });
+}
+
+async function pdfResponse(
+  titulo: string,
+  subtitulo: string,
+  generado: string,
+  secciones: SeccionPdf[],
+  slug: string
+): Promise<Response> {
+  const bytes = await reportePdf({ titulo, subtitulo, generado, secciones });
+  return new Response(new Uint8Array(bytes), {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${slug}.pdf"`,
+    },
+  });
+}
+
+type SeccionDocx = { titulo: string; encabezados: string[]; filas: (string | number)[][] };
+
+// Tabla Word con encabezado azul institucional.
+function tablaDocx(encabezados: string[], filas: (string | number)[][]): Table {
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        children: encabezados.map(
+          (h) =>
+            new TableCell({
+              shading: { fill: "1E3A8A" },
+              children: [
+                new Paragraph({ children: [new TextRun({ text: h, bold: true, color: "FFFFFF", size: 18 })] }),
+              ],
+            })
+        ),
+      }),
+      ...filas.map(
+        (f) =>
+          new TableRow({
+            children: f.map(
+              (celda) =>
+                new TableCell({
+                  children: [new Paragraph({ children: [new TextRun({ text: String(celda ?? ""), size: 18 })] })],
+                })
+            ),
+          })
+      ),
+    ],
+  });
+}
+
+async function docxResponse(
+  titulo: string,
+  subtitulo: string,
+  generado: string,
+  secciones: SeccionDocx[],
+  slug: string
+): Promise<Response> {
+  const cuerpo: (Paragraph | Table)[] = [
+    new Paragraph({ text: titulo, heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER }),
+  ];
+  if (subtitulo) {
+    cuerpo.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [new TextRun({ text: subtitulo, size: 20 })],
+      })
+    );
+  }
+  cuerpo.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: `Generado: ${generado}`, italics: true, size: 18 })],
+    })
+  );
+  for (const s of secciones) {
+    cuerpo.push(
+      new Paragraph({ text: s.titulo, heading: HeadingLevel.HEADING_2, spacing: { before: 280, after: 120 } })
+    );
+    cuerpo.push(tablaDocx(s.encabezados, s.filas));
+  }
+  const doc = new Document({ sections: [{ children: cuerpo }] });
+  const buf = await Packer.toBuffer(doc);
+  return new Response(new Uint8Array(buf), {
+    headers: {
+      "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "Content-Disposition": `attachment; filename="${slug}.docx"`,
+    },
+  });
+}
+
+// Detalle a nivel de TÍTULO (una fila por título): columnas y lector paginado
+// sobre PostgREST. Se reutiliza en el informe completo y en ?seccion=titulos.
+const DETALLE_ENCABEZADOS = [
+  "Cédula", "Apellidos", "Nombres", "Género", "Correo", "Celular", "Teléfono fijo",
+  "Ocupación", "Cargo", "Categoría ocupación", "Título", "Nivel", "Institución",
+  "Año graduación", "Carrera", "Facultad", "Estado verificación",
+];
+
+async function leerDetalleTitulos(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<(string | number)[][]> {
+  const detalle: (string | number)[][] = [];
+  const PAGINA = 1000;
+  for (let desde = 0; ; desde += PAGINA) {
+    const { data, error } = await supabase
+      .from("alumni_titulos")
+      .select(
+        "titulo, nivel_formacion, instituto, anio_graduacion, carreras(nombre, facultad), alumni(cedula, nombres, apellidos, genero, email, celular, telefono_fijo, ocupacion, cargo, ocupacion_categoria, estado_verificacion)"
+      )
+      .order("id", { ascending: true })
+      .range(desde, desde + PAGINA - 1);
+    if (error) throw new Error(error.message);
+    for (const t of data ?? []) {
+      const a = (t as any).alumni ?? {};
+      const c = (t as any).carreras ?? {};
+      detalle.push([
+        a.cedula ?? "",
+        a.apellidos ?? "",
+        a.nombres ?? "",
+        a.genero ?? "",
+        a.email ?? "",
+        a.celular ?? "",
+        a.telefono_fijo ?? "",
+        a.ocupacion ?? "",
+        a.cargo ?? "",
+        ETIQUETA_OCUPACION[a.ocupacion_categoria] ?? a.ocupacion_categoria ?? "",
+        (t as any).titulo ?? "",
+        (t as any).nivel_formacion ?? "",
+        (t as any).instituto ?? "",
+        (t as any).anio_graduacion ?? "",
+        c.nombre ?? "",
+        c.facultad ?? "",
+        a.estado_verificacion ?? "",
+      ]);
+    }
+    if (!data || data.length < PAGINA) break;
+  }
+  return detalle;
+}
+
 export async function GET(req: Request) {
   const supabase = await createClient();
   const {
@@ -49,9 +226,173 @@ export async function GET(req: Request) {
   const autorizado = perfil ? await tieneModulo(perfil, "alumni") : false;
   if (!autorizado) return new Response("Acceso denegado", { status: 403 });
 
-  const formato = new URL(req.url).searchParams.get("formato") || "excel";
+  const url = new URL(req.url);
+  const formato = url.searchParams.get("formato") || "excel";
+  const seccion = url.searchParams.get("seccion") || "";
+  const generado = new Date().toLocaleString("es-EC", { dateStyle: "long", timeStyle: "short" });
 
-  // --- Lecturas (las vistas ya vienen gateadas por has_modulo) ---
+  // ============================================================
+  // Sección "graduados": listado de personas con los filtros activos.
+  // ============================================================
+  if (seccion === "graduados") {
+    const p = url.searchParams;
+    const anioParam = p.get("anio");
+    const { data, error } = await supabase.rpc("alumni_filtrados", {
+      p_genero: p.get("genero") || null,
+      p_facultad: p.get("facultad") || null,
+      p_carrera: p.get("carrera") || null,
+      p_anio: anioParam ? parseInt(anioParam, 10) : null,
+      p_nivel: p.get("nivel") || null,
+      p_ocupacion: p.get("ocupacion") || null,
+      p_instituto: p.get("instituto") || null,
+      p_q: (p.get("q") || "").trim() || null,
+      p_limit: 100000,
+      p_offset: 0,
+    });
+    if (error) {
+      console.error("[alumni/reporte] graduados:", error.message);
+      return new Response("No se pudo generar el listado.", { status: 500 });
+    }
+    const rows = (data ?? []) as Fila[];
+
+    // Descripción del filtro activo para el subtítulo.
+    const partes: string[] = [];
+    if (p.get("facultad")) partes.push(`Facultad: ${p.get("facultad")}`);
+    if (p.get("carrera")) partes.push(`Carrera: ${p.get("carrera")}`);
+    if (p.get("anio")) partes.push(`Año: ${p.get("anio")}`);
+    if (p.get("nivel")) partes.push(`Nivel: ${ETIQUETA_NIVEL[p.get("nivel")!] ?? p.get("nivel")}`);
+    if (p.get("genero")) partes.push(`Género: ${ETIQUETA_GENERO[p.get("genero")!] ?? p.get("genero")}`);
+    if (p.get("ocupacion"))
+      partes.push(`Ocupación: ${ETIQUETA_OCUPACION[p.get("ocupacion")!] ?? p.get("ocupacion")}`);
+    if (p.get("instituto")) partes.push(`Institución: ${p.get("instituto")}`);
+    if ((p.get("q") || "").trim()) partes.push(`Búsqueda: “${p.get("q")!.trim()}”`);
+    const descripcion = partes.length ? partes.join(" · ") : "Todos los graduados";
+
+    const encabezados = [
+      "Cédula", "Apellidos", "Nombres", "Género", "Correo", "Celular", "Teléfono fijo",
+      "Ciudad", "Ocupación", "Cargo", "Categoría ocupación", "Título reciente",
+      "N.º títulos", "Verificación", "Cuenta",
+    ];
+    const filas = rows.map((r) => [
+      String(r.cedula ?? ""),
+      String(r.apellidos ?? ""),
+      String(r.nombres ?? ""),
+      ETIQUETA_GENERO[String(r.genero)] ?? String(r.genero ?? ""),
+      String(r.email ?? ""),
+      String(r.celular ?? ""),
+      String(r.telefono_fijo ?? ""),
+      String(r.ciudad ?? ""),
+      String(r.ocupacion ?? ""),
+      String(r.cargo ?? ""),
+      ETIQUETA_OCUPACION[String(r.ocupacion_categoria)] ?? String(r.ocupacion_categoria ?? ""),
+      String(r.titulo_reciente ?? ""),
+      Number(r.n_titulos ?? 0),
+      String(r.estado_verificacion ?? ""),
+      r.con_cuenta ? "Sí" : "No",
+    ]);
+
+    if (formato === "excel") {
+      return excelResponse(
+        [
+          {
+            nombre: "Graduados",
+            titulo: ["Graduados — Universidad de Cuenca", descripcion, `Generado: ${generado}`],
+            encabezados,
+            filas,
+          },
+        ],
+        "graduados"
+      );
+    }
+    if (formato === "pdf") {
+      // El PDF omite algunas columnas anchas para que quepa en A4 vertical.
+      const encPdf = ["Cédula", "Apellidos", "Nombres", "Correo", "Celular", "Título reciente", "Tít.", "Cuenta"];
+      const filasPdf = rows.map((r) => [
+        String(r.cedula ?? ""),
+        String(r.apellidos ?? ""),
+        String(r.nombres ?? ""),
+        String(r.email ?? ""),
+        String(r.celular ?? ""),
+        String(r.titulo_reciente ?? ""),
+        Number(r.n_titulos ?? 0),
+        r.con_cuenta ? "Sí" : "No",
+      ]);
+      return pdfResponse(
+        "Graduados — Alumni",
+        descripcion,
+        generado,
+        [{ titulo: `Listado (${filas.length})`, encabezados: encPdf, filas: filasPdf }],
+        "graduados"
+      );
+    }
+    if (formato === "docx") {
+      return docxResponse(
+        "Graduados — Alumni",
+        descripcion,
+        generado,
+        [{ titulo: `Listado (${filas.length})`, encabezados, filas }],
+        "graduados"
+      );
+    }
+    return new Response("Formato no soportado (usa excel, pdf o docx).", { status: 400 });
+  }
+
+  // ============================================================
+  // Sección "titulos": detalle completo, una fila por título (los 5.136).
+  // ============================================================
+  if (seccion === "titulos") {
+    let detalle: (string | number)[][];
+    try {
+      detalle = await leerDetalleTitulos(supabase);
+    } catch (e) {
+      console.error("[alumni/reporte] titulos:", (e as Error).message);
+      return new Response("No se pudo generar el detalle de títulos.", { status: 500 });
+    }
+    const subtitulo = `${detalle.length.toLocaleString("es-EC")} títulos registrados`;
+
+    if (formato === "excel") {
+      return excelResponse(
+        [
+          {
+            nombre: "Títulos",
+            titulo: ["Títulos — Universidad de Cuenca", subtitulo, `Generado: ${generado}`],
+            encabezados: DETALLE_ENCABEZADOS,
+            filas: detalle,
+          },
+        ],
+        "alumni-titulos"
+      );
+    }
+    // PDF/Word: subconjunto de columnas para que quepa en A4 vertical.
+    // Índices en DETALLE_ENCABEZADOS: 0 cédula, 1 apellidos, 2 nombres,
+    // 10 título, 11 nivel, 13 año, 15 facultad.
+    const encTit = ["Cédula", "Apellidos", "Nombres", "Título", "Nivel", "Año", "Facultad"];
+    const filasTit = detalle.map((f) => [f[0], f[1], f[2], f[10], f[11], f[13], f[15]]);
+    if (formato === "pdf") {
+      return pdfResponse(
+        "Títulos — Alumni",
+        subtitulo,
+        generado,
+        [{ titulo: `Detalle de títulos (${detalle.length})`, encabezados: encTit, filas: filasTit }],
+        "alumni-titulos"
+      );
+    }
+    if (formato === "docx") {
+      return docxResponse(
+        "Títulos — Alumni",
+        subtitulo,
+        generado,
+        [{ titulo: `Detalle de títulos (${detalle.length})`, encabezados: encTit, filas: filasTit }],
+        "alumni-titulos"
+      );
+    }
+    return new Response("Formato no soportado (usa excel, pdf o docx).", { status: 400 });
+  }
+
+  // ============================================================
+  // Agregados: se usan tanto para el informe completo como para el
+  // export de una sola sección (?seccion=<id>).
+  // ============================================================
   const [totRes, facRes, carrRes, anioRes, genRes, nivRes, ocuRes, extRes] = await Promise.all([
     supabase.from("v_alumni_totales").select("*").maybeSingle(),
     supabase.from("v_alumni_por_facultad").select("*"),
@@ -79,8 +420,6 @@ export async function GET(req: Request) {
   const ocupacion = (ocuRes.data ?? []) as Fila[];
   const externos = (extRes.data ?? []) as Fila[];
 
-  const generado = new Date().toLocaleString("es-EC", { dateStyle: "long", timeStyle: "short" });
-
   const resumen: [string, number][] = [
     ["Personas registradas", Number(tot.personas ?? 0)],
     ["Con correo electrónico", Number(tot.con_email ?? 0)],
@@ -95,55 +434,76 @@ export async function GET(req: Request) {
   const filasFacultad = porFacultad.map((f) => [String(f.facultad), Number(f.graduados), Number(f.titulos)]);
   const filasCarrera = porCarrera.map((f) => [String(f.carrera), String(f.facultad), Number(f.graduados), Number(f.titulos)]);
   const filasAnio = porAnio.map((f) => [Number(f.anio_graduacion), Number(f.graduados), Number(f.titulos)]);
-  const filasGenero = porGenero.map((f) => [String(f.genero), Number(f.personas)]);
-  const filasNivel = porNivel.map((f) => [String(f.nivel), Number(f.graduados), Number(f.titulos)]);
+  const filasGenero = porGenero.map((f) => [ETIQUETA_GENERO[String(f.genero)] ?? String(f.genero), Number(f.personas)]);
+  const filasNivel = porNivel.map((f) => [ETIQUETA_NIVEL[String(f.nivel)] ?? String(f.nivel), Number(f.graduados), Number(f.titulos)]);
   const filasOcupacion = ocupacion.map((f) => [
     ETIQUETA_OCUPACION[String(f.ocupacion_categoria)] ?? String(f.ocupacion_categoria),
     Number(f.personas),
   ]);
   const filasExternos = externos.map((f) => [String(f.instituto), Number(f.graduados), Number(f.titulos)]);
 
+  const defs: Def[] = [
+    { id: "resumen", nombre: "Resumen", titulo: "Resumen general", encabezados: ["Indicador", "Valor"], filas: resumen },
+    { id: "facultad", nombre: "Por facultad", titulo: "Graduados por facultad", encabezados: ["Facultad", "Graduados", "Títulos"], filas: filasFacultad },
+    { id: "carrera", nombre: "Por carrera", titulo: "Graduados por carrera", encabezados: ["Carrera", "Facultad", "Graduados", "Títulos"], filas: filasCarrera },
+    { id: "anio", nombre: "Por año", titulo: "Títulos por año de graduación", encabezados: ["Año graduación", "Graduados", "Títulos"], filas: filasAnio },
+    { id: "genero", nombre: "Por género", titulo: "Graduados por género", encabezados: ["Género", "Personas"], filas: filasGenero },
+    { id: "nivel", nombre: "Por nivel", titulo: "Títulos por nivel de formación", encabezados: ["Nivel de formación", "Graduados", "Títulos"], filas: filasNivel },
+    { id: "ocupacion", nombre: "Ocupación", titulo: "Situación ocupacional", encabezados: ["Categoría", "Personas"], filas: filasOcupacion },
+    { id: "externos", nombre: "Posgrados externos", titulo: "Posgrados en otras instituciones", encabezados: ["Institución", "Graduados", "Títulos"], filas: filasExternos },
+  ];
+
+  // ------------- Export de una sola sección -------------
+  if (seccion) {
+    const def = defs.find((d) => d.id === seccion);
+    if (!def) return new Response("Sección desconocida.", { status: 400 });
+    if (formato === "excel") {
+      return excelResponse(
+        [
+          {
+            nombre: def.nombre,
+            titulo: [`${def.titulo} — Alumni UCuenca`, `Generado: ${generado}`],
+            encabezados: def.encabezados,
+            filas: def.filas,
+          },
+        ],
+        `alumni-${def.id}`
+      );
+    }
+    if (formato === "pdf") {
+      return pdfResponse(
+        def.titulo,
+        "Seguimiento a graduados — Vinculación con la Sociedad",
+        generado,
+        [{ titulo: def.titulo, encabezados: def.encabezados, filas: def.filas }],
+        `alumni-${def.id}`
+      );
+    }
+    if (formato === "docx") {
+      return docxResponse(
+        def.titulo,
+        "Seguimiento a graduados — Vinculación con la Sociedad",
+        generado,
+        [{ titulo: def.titulo, encabezados: def.encabezados, filas: def.filas }],
+        `alumni-${def.id}`
+      );
+    }
+    return new Response("Formato no soportado para una sección (usa excel, pdf o docx).", { status: 400 });
+  }
+
+  // ============================================================
+  // Informe completo (comportamiento original).
+  // ============================================================
+
   // ---------------- Excel ----------------
   if (formato === "excel") {
     // Detalle completo (una fila por título), paginado sobre PostgREST.
-    const detalle: (string | number)[][] = [];
-    const PAGINA = 1000;
-    for (let desde = 0; ; desde += PAGINA) {
-      const { data, error } = await supabase
-        .from("alumni_titulos")
-        .select(
-          "titulo, nivel_formacion, instituto, anio_graduacion, carreras(nombre, facultad), alumni(cedula, nombres, apellidos, genero, email, celular, telefono_fijo, ocupacion, cargo, ocupacion_categoria, estado_verificacion)"
-        )
-        .order("id", { ascending: true })
-        .range(desde, desde + PAGINA - 1);
-      if (error) {
-        console.error("[alumni/reporte] detalle:", error.message);
-        return new Response("No se pudo generar el detalle.", { status: 500 });
-      }
-      for (const t of data ?? []) {
-        const a = (t as any).alumni ?? {};
-        const c = (t as any).carreras ?? {};
-        detalle.push([
-          a.cedula ?? "",
-          a.apellidos ?? "",
-          a.nombres ?? "",
-          a.genero ?? "",
-          a.email ?? "",
-          a.celular ?? "",
-          a.telefono_fijo ?? "",
-          a.ocupacion ?? "",
-          a.cargo ?? "",
-          ETIQUETA_OCUPACION[a.ocupacion_categoria] ?? a.ocupacion_categoria ?? "",
-          (t as any).titulo ?? "",
-          (t as any).nivel_formacion ?? "",
-          (t as any).instituto ?? "",
-          (t as any).anio_graduacion ?? "",
-          c.nombre ?? "",
-          c.facultad ?? "",
-          a.estado_verificacion ?? "",
-        ]);
-      }
-      if (!data || data.length < PAGINA) break;
+    let detalle: (string | number)[][];
+    try {
+      detalle = await leerDetalleTitulos(supabase);
+    } catch (e) {
+      console.error("[alumni/reporte] detalle:", (e as Error).message);
+      return new Response("No se pudo generar el detalle.", { status: 500 });
     }
 
     const hojas: Hoja[] = [
@@ -153,30 +513,16 @@ export async function GET(req: Request) {
         encabezados: ["Indicador", "Valor"],
         filas: resumen,
       },
-      { nombre: "Por facultad", encabezados: ["Facultad", "Graduados", "Títulos"], filas: filasFacultad },
-      { nombre: "Por carrera", encabezados: ["Carrera", "Facultad", "Graduados", "Títulos"], filas: filasCarrera },
-      { nombre: "Por año", encabezados: ["Año graduación", "Graduados", "Títulos"], filas: filasAnio },
-      { nombre: "Por género", encabezados: ["Género", "Personas"], filas: filasGenero },
-      { nombre: "Por nivel", encabezados: ["Nivel de formación", "Graduados", "Títulos"], filas: filasNivel },
-      { nombre: "Ocupación", encabezados: ["Categoría", "Personas"], filas: filasOcupacion },
-      { nombre: "Posgrados externos", encabezados: ["Institución", "Graduados", "Títulos"], filas: filasExternos },
+      ...defs
+        .filter((d) => d.id !== "resumen")
+        .map((d) => ({ nombre: d.nombre, encabezados: d.encabezados, filas: d.filas })),
       {
         nombre: "Detalle",
-        encabezados: [
-          "Cédula", "Apellidos", "Nombres", "Género", "Correo", "Celular", "Teléfono fijo",
-          "Ocupación", "Cargo", "Categoría ocupación", "Título", "Nivel", "Institución",
-          "Año graduación", "Carrera", "Facultad", "Estado verificación",
-        ],
+        encabezados: DETALLE_ENCABEZADOS,
         filas: detalle,
       },
     ];
-    const buf = libroExcel(hojas);
-    return new Response(new Uint8Array(buf), {
-      headers: {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": 'attachment; filename="informe-alumni.xlsx"',
-      },
-    });
+    return excelResponse(hojas, "informe-alumni");
   }
 
   // ---------------- PDF ----------------
@@ -199,102 +545,33 @@ export async function GET(req: Request) {
         filas: filasExternos.slice(0, 15),
       },
     ];
-    const bytes = await reportePdf({
-      titulo: "Informe de Alumni",
-      subtitulo: "Seguimiento a graduados — Vinculación con la Sociedad",
+    return pdfResponse(
+      "Informe de Alumni",
+      "Seguimiento a graduados — Vinculación con la Sociedad",
       generado,
       secciones,
-    });
-    return new Response(new Uint8Array(bytes), {
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": 'attachment; filename="informe-alumni.pdf"',
-      },
-    });
+      "informe-alumni"
+    );
   }
 
   // ---------------- DOCX ----------------
   if (formato === "docx") {
-    const tabla = (encabezados: string[], filas: (string | number)[][]) =>
-      new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [
-          new TableRow({
-            children: encabezados.map(
-              (h) =>
-                new TableCell({
-                  shading: { fill: "1E3A8A" },
-                  children: [
-                    new Paragraph({
-                      children: [new TextRun({ text: h, bold: true, color: "FFFFFF", size: 18 })],
-                    }),
-                  ],
-                })
-            ),
-          }),
-          ...filas.map(
-            (f) =>
-              new TableRow({
-                children: f.map(
-                  (celda) =>
-                    new TableCell({
-                      children: [
-                        new Paragraph({
-                          children: [new TextRun({ text: String(celda ?? ""), size: 18 })],
-                        }),
-                      ],
-                    })
-                ),
-              })
-          ),
-        ],
-      });
-
-    const seccion = (titulo: string, encabezados: string[], filas: (string | number)[][]) => [
-      new Paragraph({ text: titulo, heading: HeadingLevel.HEADING_2, spacing: { before: 280, after: 120 } }),
-      tabla(encabezados, filas),
-    ];
-
-    const doc = new Document({
-      sections: [
-        {
-          children: [
-            new Paragraph({
-              text: "Informe de Alumni — Universidad de Cuenca",
-              heading: HeadingLevel.HEADING_1,
-              alignment: AlignmentType.CENTER,
-            }),
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [new TextRun({ text: `Generado: ${generado}`, italics: true, size: 18 })],
-            }),
-            ...seccion("Resumen general", ["Indicador", "Valor"], resumen),
-            ...seccion("Graduados por facultad", ["Facultad", "Graduados", "Títulos"], filasFacultad),
-            ...seccion(
-              "Graduados por carrera (top 25)",
-              ["Carrera", "Facultad", "Graduados", "Títulos"],
-              filasCarrera.slice(0, 25)
-            ),
-            ...seccion("Por año de graduación", ["Año", "Graduados", "Títulos"], filasAnio),
-            ...seccion("Por género", ["Género", "Personas"], filasGenero),
-            ...seccion("Por nivel de formación", ["Nivel", "Graduados", "Títulos"], filasNivel),
-            ...seccion("Situación ocupacional", ["Categoría", "Personas"], filasOcupacion),
-            ...seccion(
-              "Posgrados en otras instituciones (top 15)",
-              ["Institución", "Graduados", "Títulos"],
-              filasExternos.slice(0, 15)
-            ),
-          ],
-        },
+    return docxResponse(
+      "Informe de Alumni — Universidad de Cuenca",
+      "",
+      generado,
+      [
+        { titulo: "Resumen general", encabezados: ["Indicador", "Valor"], filas: resumen },
+        { titulo: "Graduados por facultad", encabezados: ["Facultad", "Graduados", "Títulos"], filas: filasFacultad },
+        { titulo: "Graduados por carrera (top 25)", encabezados: ["Carrera", "Facultad", "Graduados", "Títulos"], filas: filasCarrera.slice(0, 25) },
+        { titulo: "Por año de graduación", encabezados: ["Año", "Graduados", "Títulos"], filas: filasAnio },
+        { titulo: "Por género", encabezados: ["Género", "Personas"], filas: filasGenero },
+        { titulo: "Por nivel de formación", encabezados: ["Nivel", "Graduados", "Títulos"], filas: filasNivel },
+        { titulo: "Situación ocupacional", encabezados: ["Categoría", "Personas"], filas: filasOcupacion },
+        { titulo: "Posgrados en otras instituciones (top 15)", encabezados: ["Institución", "Graduados", "Títulos"], filas: filasExternos.slice(0, 15) },
       ],
-    });
-    const buf = await Packer.toBuffer(doc);
-    return new Response(new Uint8Array(buf), {
-      headers: {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "Content-Disposition": 'attachment; filename="informe-alumni.docx"',
-      },
-    });
+      "informe-alumni"
+    );
   }
 
   return new Response("Formato no soportado (usa excel, pdf o docx).", { status: 400 });

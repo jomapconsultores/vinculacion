@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireModulo } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { ExportSeccion, ExportFila } from "@/components/alumni/ExportSeccion";
 import {
   GraduationCap,
   Users,
@@ -59,6 +60,13 @@ function href(filtro: Record<string, string | number>): string {
   const params: Record<string, string> = {};
   for (const [k, v] of Object.entries(filtro)) params[k] = String(v);
   return `/admin/alumni/graduados?${new URLSearchParams(params).toString()}`;
+}
+
+// Query de exportación de UNA subdivisión (los graduados de ese grupo).
+function expGrad(filtro: Record<string, string | number>): string {
+  const params: Record<string, string> = { seccion: "graduados" };
+  for (const [k, v] of Object.entries(filtro)) params[k] = String(v);
+  return new URLSearchParams(params).toString();
 }
 
 export default async function AlumniPage() {
@@ -174,14 +182,24 @@ export default async function AlumniPage() {
           </Link>
 
           {/* KPIs (clicables cuando corresponde a un filtro) */}
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-semibold text-slate-800">Indicadores generales</h2>
+            <ExportSeccion params="seccion=resumen" etiqueta="Indicadores generales" />
+          </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <KpiLink
               href="/admin/alumni/graduados"
               icono={<Users className="h-4 w-4" />}
               etiqueta="Graduados"
               valor={tot.personas}
+              exportar="seccion=graduados"
             />
-            <Kpi icono={<GraduationCap className="h-4 w-4" />} etiqueta="Títulos" valor={tot.titulos} />
+            <Kpi
+              icono={<GraduationCap className="h-4 w-4" />}
+              etiqueta="Títulos"
+              valor={tot.titulos}
+              exportar="seccion=titulos"
+            />
             <Kpi
               icono={<Mail className="h-4 w-4" />}
               etiqueta="Con correo"
@@ -212,37 +230,45 @@ export default async function AlumniPage() {
           <div className="grid gap-6 lg:grid-cols-2">
             <Barras
               titulo="Graduados por facultad"
+              seccion="facultad"
               filas={porFacultad.map((f: any) => ({
                 etiqueta: f.facultad,
                 n: Number(f.graduados),
                 href: href({ facultad: f.facultad }),
+                exportar: expGrad({ facultad: f.facultad }),
               }))}
               color="bg-blue-600"
             />
             <Barras
               titulo="Situación ocupacional"
+              seccion="ocupacion"
               filas={ocupacion.map((f: any) => ({
                 etiqueta: ETIQUETA_OCUPACION[f.ocupacion_categoria] ?? f.ocupacion_categoria,
                 n: Number(f.personas),
                 href: href({ ocupacion: f.ocupacion_categoria }),
+                exportar: expGrad({ ocupacion: f.ocupacion_categoria }),
               }))}
               color="bg-teal-600"
             />
             <Barras
               titulo="Por género"
+              seccion="genero"
               filas={porGenero.map((f: any) => ({
                 etiqueta: ETIQUETA_GENERO[f.genero] ?? f.genero,
                 n: Number(f.personas),
                 href: href({ genero: f.genero }),
+                exportar: expGrad({ genero: f.genero }),
               }))}
               color="bg-violet-600"
             />
             <Barras
               titulo="Títulos por nivel de formación"
+              seccion="nivel"
               filas={porNivel.map((f: any) => ({
                 etiqueta: ETIQUETA_NIVEL[f.nivel] ?? f.nivel,
                 n: Number(f.titulos),
                 href: href({ nivel: f.nivel }),
+                exportar: expGrad({ nivel: f.nivel }),
               }))}
               color="bg-amber-500"
             />
@@ -250,7 +276,12 @@ export default async function AlumniPage() {
 
           {/* Por año */}
           <div className="card p-5">
-            <h2 className="mb-4 font-semibold text-slate-800">Títulos por año de graduación</h2>
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <h2 className="font-semibold text-slate-800">Títulos por año de graduación</h2>
+              {porAnio.length > 0 && (
+                <ExportSeccion params="seccion=anio" etiqueta="Por año de graduación" />
+              )}
+            </div>
             <div className="flex items-end gap-1 overflow-x-auto pb-2">
               {(() => {
                 const max = Math.max(1, ...porAnio.map((f: any) => Number(f.titulos)));
@@ -275,23 +306,28 @@ export default async function AlumniPage() {
           {/* Posgrados externos */}
           {externos.length > 0 && (
             <div className="card p-5">
-              <h2 className="mb-3 font-semibold text-slate-800">
-                Posgrados en otras instituciones (top 10)
-              </h2>
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <h2 className="font-semibold text-slate-800">
+                  Posgrados en otras instituciones (top 10)
+                </h2>
+                <ExportSeccion params="seccion=externos" etiqueta="Posgrados externos" />
+              </div>
               <div className="divide-y divide-slate-100">
                 {externos.map((f: any) => (
-                  <Link
-                    key={f.instituto}
-                    href={href({ instituto: f.instituto })}
-                    className="flex items-center justify-between gap-3 py-2 text-sm hover:bg-slate-50"
-                  >
-                    <span className="min-w-0 truncate text-slate-700">{f.instituto}</span>
-                    <span className="flex shrink-0 items-center gap-3 text-slate-500">
-                      <span>{f.graduados} grad.</span>
-                      <span>{f.titulos} tít.</span>
-                      <ChevronRight className="h-4 w-4 text-slate-300" />
-                    </span>
-                  </Link>
+                  <div key={f.instituto} className="flex items-center gap-2 py-1">
+                    <Link
+                      href={href({ instituto: f.instituto })}
+                      className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-lg px-1 py-1 text-sm hover:bg-slate-50"
+                    >
+                      <span className="min-w-0 truncate text-slate-700">{f.instituto}</span>
+                      <span className="flex shrink-0 items-center gap-3 text-slate-500">
+                        <span>{f.graduados} grad.</span>
+                        <span>{f.titulos} tít.</span>
+                        <ChevronRight className="h-4 w-4 text-slate-300" />
+                      </span>
+                    </Link>
+                    <ExportFila params={expGrad({ instituto: f.instituto })} etiqueta={f.instituto} />
+                  </div>
                 ))}
               </div>
             </div>
@@ -311,14 +347,21 @@ function Kpi({
   valor,
   pct,
   icono,
+  exportar,
 }: {
   etiqueta: string;
   valor: number;
   pct?: number;
   icono?: React.ReactNode;
+  exportar?: string;
 }) {
   return (
-    <div className="card p-4">
+    <div className="card relative p-4">
+      {exportar && (
+        <div className="absolute right-2 top-2">
+          <ExportFila params={exportar} etiqueta={etiqueta} />
+        </div>
+      )}
       <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
         {icono} {etiqueta}
       </p>
@@ -335,22 +378,31 @@ function KpiLink({
   etiqueta,
   valor,
   icono,
+  exportar,
 }: {
   href: string;
   etiqueta: string;
   valor: number;
   icono?: React.ReactNode;
+  exportar?: string;
 }) {
   return (
-    <Link href={href} className="card card-hover p-4">
-      <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
-        {icono} {etiqueta}
-      </p>
-      <p className="mt-1 flex items-center gap-1 text-2xl font-bold text-slate-900">
-        {valor.toLocaleString("es-EC")}
-        <ChevronRight className="h-4 w-4 text-slate-300" />
-      </p>
-    </Link>
+    <div className="relative">
+      {exportar && (
+        <div className="absolute right-2 top-2 z-10">
+          <ExportFila params={exportar} etiqueta={etiqueta} />
+        </div>
+      )}
+      <Link href={href} className="card card-hover block p-4">
+        <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
+          {icono} {etiqueta}
+        </p>
+        <p className="mt-1 flex items-center gap-1 text-2xl font-bold text-slate-900">
+          {valor.toLocaleString("es-EC")}
+          <ChevronRight className="h-4 w-4 text-slate-300" />
+        </p>
+      </Link>
+    </div>
   );
 }
 
@@ -358,15 +410,20 @@ function Barras({
   titulo,
   filas,
   color,
+  seccion,
 }: {
   titulo: string;
-  filas: { etiqueta: string; n: number; href?: string }[];
+  filas: { etiqueta: string; n: number; href?: string; exportar?: string }[];
   color: string;
+  seccion?: string;
 }) {
   const max = Math.max(1, ...filas.map((f) => f.n));
   return (
     <div className="card p-5">
-      <h2 className="mb-4 font-semibold text-slate-800">{titulo}</h2>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <h2 className="font-semibold text-slate-800">{titulo}</h2>
+        {seccion && filas.length > 0 && <ExportSeccion params={`seccion=${seccion}`} etiqueta={titulo} />}
+      </div>
       <div className="space-y-1">
         {filas.map((f) => {
           const contenido = (
@@ -383,17 +440,19 @@ function Barras({
               </div>
             </>
           );
-          return f.href ? (
-            <Link
-              key={f.etiqueta}
-              href={f.href}
-              className="group block rounded-lg p-1.5 transition hover:bg-slate-50"
-            >
-              {contenido}
-            </Link>
-          ) : (
-            <div key={f.etiqueta} className="p-1.5">
-              {contenido}
+          return (
+            <div key={f.etiqueta} className="flex items-center gap-1">
+              {f.href ? (
+                <Link
+                  href={f.href}
+                  className="group block min-w-0 flex-1 rounded-lg p-1.5 transition hover:bg-slate-50"
+                >
+                  {contenido}
+                </Link>
+              ) : (
+                <div className="min-w-0 flex-1 p-1.5">{contenido}</div>
+              )}
+              {f.exportar && <ExportFila params={f.exportar} etiqueta={f.etiqueta} />}
             </div>
           );
         })}
