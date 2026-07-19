@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { LogOut, Menu, X, Settings, ChevronDown, Repeat } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { iniciales } from "@/lib/utils";
+import { useInactivityLogout } from "@/hooks/useInactivityLogout";
 
 // `group` clasifica el ítem dentro de un módulo del menú (ej. "Servicios y
 // prácticas"); los ítems sin `group` se muestran sueltos, antes de los
@@ -223,6 +224,17 @@ export function Sidebar(props: {
 }) {
   const [open, setOpen] = useState(false);
   const { rol, rolesDisponibles } = props;
+
+  // Cierra la sesión tras 30 minutos de inactividad. El Sidebar solo se
+  // renderiza en páginas autenticadas, así que reusa el mismo cierre de
+  // sesión del servidor (POST /auth/signout) que usa el botón "Cerrar sesión".
+  useInactivityLogout(() => {
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = "/auth/signout";
+    document.body.appendChild(form);
+    form.submit();
+  });
 
   return (
     <>

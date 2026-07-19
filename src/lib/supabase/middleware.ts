@@ -42,5 +42,34 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Cierre de sesión por inactividad: 30 min sin ninguna petición.
+  // Se rastrea la última actividad en una cookie que se refresca en cada
+  // request (ventana deslizante). Al vencer se cierra la sesión de Supabase.
+  const IDLE_MS = 30 * 60 * 1000;
+  const ACTIVITY_COOKIE = "last_activity";
+  if (user) {
+    const now = Date.now();
+    const raw = request.cookies.get(ACTIVITY_COOKIE)?.value;
+    const last = raw ? parseInt(raw, 10) : NaN;
+    if (!Number.isNaN(last) && now - last > IDLE_MS) {
+      await supabase.auth.signOut();
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      const redirect = NextResponse.redirect(url);
+      // Conserva las cookies de cierre de sesión que fijó signOut() y borra
+      // la de actividad.
+      response.cookies.getAll().forEach((c) => redirect.cookies.set(c));
+      redirect.cookies.set(ACTIVITY_COOKIE, "", { path: "/", maxAge: 0 });
+      return redirect;
+    }
+    response.cookies.set(ACTIVITY_COOKIE, String(now), {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 30 * 60,
+    });
+  }
+
   return response;
 }
