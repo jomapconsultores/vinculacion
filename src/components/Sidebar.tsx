@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut, Menu, X, Settings, ChevronDown, Repeat } from "lucide-react";
@@ -28,6 +28,22 @@ function agruparItems(items: NavItem[]): { group: string | null; items: NavItem[
   }
   return bloques;
 }
+
+// Rutas raíz de cada rol: no deben marcarse como activas por prefijo (si no,
+// "/admin" quedaría activo en todas sus subpáginas).
+const RAICES = new Set(["/dashboard", "/admin", "/empleador"]);
+
+function esRutaActiva(href: string, path: string) {
+  return path === href || (!RAICES.has(href) && path.startsWith(href));
+}
+
+// Grupo (módulo) al que pertenece la ruta actual; null si la ruta corresponde
+// a un ítem suelto (ej. "Panel") o no está en el menú.
+function grupoDeRuta(items: NavItem[], path: string): string | null {
+  const item = items.find((it) => esRutaActiva(it.href, path));
+  return item?.group ?? null;
+}
+
 export type RolDisponible = { rol: string; label: string };
 
 function Marca() {
@@ -133,41 +149,59 @@ function SelectorRol({ rol, rolesDisponibles }: { rol: string; rolesDisponibles:
   );
 }
 
-function Contenido({
+// Identidad del usuario: nombre y, justo debajo, el rol activo.
+function Identidad({ nombre, apellido, rol }: { nombre: string; apellido: string; rol: string }) {
+  return (
+    <div className="flex items-center gap-3 border-b border-slate-200 px-4 py-3">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-900 ring-1 ring-inset ring-blue-100">
+        {iniciales(nombre, apellido)}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-slate-800">{nombre} {apellido}</p>
+        <span className={`badge mt-1 ${infoRol(rol).badge}`}>{infoRol(rol).label}</span>
+      </div>
+    </div>
+  );
+}
+
+function Pie({ onNavigate }: { onNavigate?: () => void }) {
+  return (
+    <div className="border-t border-slate-200 p-3">
+      <Link
+        href="/cuenta"
+        onClick={onNavigate}
+        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+      >
+        <Settings className="h-4 w-4" /> Mi cuenta
+      </Link>
+      <form action="/auth/signout" method="post">
+        <button className="btn-ghost mt-1 w-full justify-start text-slate-500">
+          <LogOut className="h-4 w-4" /> Salir
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// Lista completa en una sola columna, con encabezado por grupo. Se usa en el
+// cajón deslizante de móvil, donde no hay ancho para las dos columnas.
+function ContenidoLista({
   items,
   nombre,
   apellido,
   rol,
-  rolesDisponibles,
   onNavigate,
 }: {
   items: NavItem[];
   nombre: string;
   apellido: string;
   rol: string;
-  rolesDisponibles?: RolDisponible[];
   onNavigate?: () => void;
 }) {
   const path = usePathname();
   return (
     <>
-      <div className="hidden items-center justify-between border-b border-slate-200 px-5 py-4 lg:flex">
-        <Marca />
-        {rolesDisponibles && rolesDisponibles.length > 1 && (
-          <SelectorRol rol={rol} rolesDisponibles={rolesDisponibles} />
-        )}
-      </div>
-
-      {/* Identidad del usuario (arriba): nombre y, justo debajo, el rol activo. */}
-      <div className="flex items-center gap-3 border-b border-slate-200 px-4 py-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-900 ring-1 ring-inset ring-blue-100">
-          {iniciales(nombre, apellido)}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-slate-800">{nombre} {apellido}</p>
-          <span className={`badge mt-1 ${infoRol(rol).badge}`}>{infoRol(rol).label}</span>
-        </div>
-      </div>
+      <Identidad nombre={nombre} apellido={apellido} rol={rol} />
 
       <nav className="flex-1 space-y-3 overflow-y-auto p-3">
         {agruparItems(items).map((bloque, i) => (
@@ -177,39 +211,160 @@ function Contenido({
                 {bloque.group}
               </p>
             )}
-            {bloque.items.map((it) => {
-              const active = path === it.href || (it.href !== "/dashboard" && it.href !== "/admin" && it.href !== "/empleador" && path.startsWith(it.href));
-              return (
-                <Link
-                  key={it.href}
-                  href={it.href}
-                  onClick={onNavigate}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                    active ? "bg-blue-50 text-blue-900" : "text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  {it.icon}
-                  {it.label}
-                </Link>
-              );
-            })}
+            {bloque.items.map((it) => (
+              <Link
+                key={it.href}
+                href={it.href}
+                onClick={onNavigate}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  esRutaActiva(it.href, path) ? "bg-blue-50 text-blue-900" : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                {it.icon}
+                {it.label}
+              </Link>
+            ))}
           </div>
         ))}
       </nav>
 
-      <div className="border-t border-slate-200 p-3">
-        <Link
-          href="/cuenta"
-          onClick={onNavigate}
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
-        >
-          <Settings className="h-4 w-4" /> Mi cuenta
-        </Link>
-        <form action="/auth/signout" method="post">
-          <button className="btn-ghost mt-1 w-full justify-start text-slate-500">
-            <LogOut className="h-4 w-4" /> Salir
-          </button>
-        </form>
+      <Pie onNavigate={onNavigate} />
+    </>
+  );
+}
+
+// Escritorio: dos columnas. La primera es el riel de módulos (un botón por
+// grupo, más los ítems sueltos como enlace directo); la segunda despliega los
+// submenús del módulo seleccionado.
+function ContenidoColumnas({
+  items,
+  nombre,
+  apellido,
+  rol,
+  rolesDisponibles,
+}: {
+  items: NavItem[];
+  nombre: string;
+  apellido: string;
+  rol: string;
+  rolesDisponibles?: RolDisponible[];
+}) {
+  const path = usePathname();
+  const bloques = agruparItems(items);
+  const grupos = bloques.filter((b) => b.group !== null) as { group: string; items: NavItem[] }[];
+  const sueltos = bloques.filter((b) => b.group === null).flatMap((b) => b.items);
+
+  // Módulo abierto en la segunda columna. Por defecto, el de la ruta actual;
+  // si la ruta es un ítem suelto ("Panel"), se mantiene el primer módulo para
+  // que la columna nunca quede vacía.
+  const grupoRuta = grupoDeRuta(items, path);
+  const [abierto, setAbierto] = useState<string | null>(grupoRuta ?? grupos[0]?.group ?? null);
+
+  // Al navegar a otro módulo (ej. desde un enlace fuera del menú), la segunda
+  // columna sigue a la ruta.
+  useEffect(() => {
+    if (grupoRuta) setAbierto(grupoRuta);
+  }, [grupoRuta]);
+
+  const activo = grupos.find((g) => g.group === abierto) ?? grupos[0];
+
+  // Menús sin módulos (ej. empleador): no hay nada que desplegar en la segunda
+  // columna, así que se mantiene la barra de una sola columna.
+  if (grupos.length === 0) {
+    return (
+      <div className="flex w-64 flex-col">
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <Marca />
+          {rolesDisponibles && rolesDisponibles.length > 1 && (
+            <SelectorRol rol={rol} rolesDisponibles={rolesDisponibles} />
+          )}
+        </div>
+        <ContenidoLista items={items} nombre={nombre} apellido={apellido} rol={rol} />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Columna 1: riel de módulos */}
+      <div className="flex w-20 shrink-0 flex-col border-r border-slate-200 bg-slate-50">
+        {/* Espaciador: alinea el borde del riel con el del encabezado de la
+            segunda columna (la marca vive allí, no se repite aquí). */}
+        <div className="h-[62px] shrink-0 border-b border-slate-200" />
+
+        <div className="flex-1 space-y-1 overflow-y-auto p-2">
+          {sueltos.map((it) => (
+            <Link
+              key={it.href}
+              href={it.href}
+              title={it.label}
+              className={`flex flex-col items-center gap-1 rounded-lg px-1 py-2 text-center text-[10px] font-medium leading-tight transition ${
+                esRutaActiva(it.href, path)
+                  ? "bg-blue-100 text-blue-900"
+                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              }`}
+            >
+              {it.icon}
+              <span className="line-clamp-2">{it.label}</span>
+            </Link>
+          ))}
+
+          {grupos.map((g) => {
+            const seleccionado = activo?.group === g.group;
+            const conRutaActual = grupoRuta === g.group;
+            return (
+              <button
+                key={g.group}
+                type="button"
+                onClick={() => setAbierto(g.group)}
+                title={g.group}
+                aria-current={conRutaActual ? "true" : undefined}
+                className={`flex w-full flex-col items-center gap-1 rounded-lg px-1 py-2 text-center text-[10px] font-medium leading-tight transition ${
+                  seleccionado
+                    ? "bg-blue-100 text-blue-900"
+                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                }`}
+              >
+                {g.items[0].icon}
+                <span className="line-clamp-2">{g.group}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Columna 2: submenús del módulo seleccionado */}
+      <div className="flex w-60 min-w-0 flex-col">
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
+          <Marca />
+          {rolesDisponibles && rolesDisponibles.length > 1 && (
+            <SelectorRol rol={rol} rolesDisponibles={rolesDisponibles} />
+          )}
+        </div>
+
+        <Identidad nombre={nombre} apellido={apellido} rol={rol} />
+
+        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+          {activo && (
+            <p className="px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              {activo.group}
+            </p>
+          )}
+          {activo?.items.map((it) => (
+            <Link
+              key={it.href}
+              href={it.href}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                esRutaActiva(it.href, path) ? "bg-blue-50 text-blue-900" : "text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              {it.icon}
+              {it.label}
+            </Link>
+          ))}
+        </nav>
+
+        <Pie />
       </div>
     </>
   );
@@ -256,9 +411,9 @@ export function Sidebar(props: {
         </div>
       </header>
 
-      {/* Barra lateral fija (escritorio) */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">
-        <Contenido {...props} />
+      {/* Barra lateral fija (escritorio): dos columnas, módulos + submenús */}
+      <aside className="hidden shrink-0 border-r border-slate-200 bg-white lg:flex">
+        <ContenidoColumnas {...props} />
       </aside>
 
       {/* Cajón deslizante (móvil) */}
@@ -286,7 +441,7 @@ export function Sidebar(props: {
                 <SelectorRol rol={rol} rolesDisponibles={rolesDisponibles} />
               </div>
             )}
-            <Contenido {...props} onNavigate={() => setOpen(false)} />
+            <ContenidoLista {...props} onNavigate={() => setOpen(false)} />
           </aside>
         </div>
       )}
