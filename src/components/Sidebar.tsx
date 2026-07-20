@@ -285,88 +285,87 @@ function ContenidoColumnas({
   }
 
   return (
-    <>
-      {/* Columna 1: riel de módulos */}
-      <div className="flex w-20 shrink-0 flex-col border-r border-slate-200 bg-slate-50">
-        {/* Espaciador: alinea el borde del riel con el del encabezado de la
-            segunda columna (la marca vive allí, no se repite aquí). */}
-        <div className="h-[62px] shrink-0 border-b border-slate-200" />
+    <div className="flex w-[390px] flex-col">
+      {/* Encabezado a todo el ancho: la marca abarca las dos franjas. */}
+      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
+        <Marca />
+        {rolesDisponibles && rolesDisponibles.length > 1 && (
+          <SelectorRol rol={rol} rolesDisponibles={rolesDisponibles} />
+        )}
+      </div>
 
-        <div className="flex-1 space-y-1 overflow-y-auto p-2">
-          {sueltos.map((it) => (
-            <Link
-              key={it.href}
-              href={it.href}
-              title={it.label}
-              className={`flex flex-col items-center gap-1 rounded-lg px-1 py-2 text-center text-[10px] font-medium leading-tight transition ${
-                esRutaActiva(it.href, path)
-                  ? "bg-blue-100 text-blue-900"
-                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-              }`}
-            >
-              {it.icon}
-              <span className="line-clamp-2">{it.label}</span>
-            </Link>
-          ))}
-
-          {grupos.map((g) => {
-            const seleccionado = activo?.group === g.group;
-            const conRutaActual = grupoRuta === g.group;
-            return (
-              <button
-                key={g.group}
-                type="button"
-                onClick={() => setAbierto(g.group)}
-                title={g.group}
-                aria-current={conRutaActual ? "true" : undefined}
-                className={`flex w-full flex-col items-center gap-1 rounded-lg px-1 py-2 text-center text-[10px] font-medium leading-tight transition ${
-                  seleccionado
+      <div className="flex min-h-0 flex-1">
+        {/* Columna 1: riel de módulos */}
+        <div className="flex w-[150px] shrink-0 flex-col border-r border-slate-200 bg-slate-50">
+          <div className="flex-1 space-y-1 overflow-y-auto p-2">
+            {sueltos.map((it) => (
+              <Link
+                key={it.href}
+                href={it.href}
+                title={it.label}
+                className={`flex items-center gap-2 rounded-lg px-2.5 py-2.5 text-left text-[13px] font-medium leading-tight transition ${
+                  esRutaActiva(it.href, path)
                     ? "bg-blue-100 text-blue-900"
                     : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
                 }`}
               >
-                {g.items[0].icon}
-                <span className="line-clamp-2">{g.group}</span>
-              </button>
-            );
-          })}
+                <span className="shrink-0">{it.icon}</span>
+                <span className="line-clamp-2">{it.label}</span>
+              </Link>
+            ))}
+
+            {grupos.map((g) => {
+              const seleccionado = activo?.group === g.group;
+              const conRutaActual = grupoRuta === g.group;
+              return (
+                <button
+                  key={g.group}
+                  type="button"
+                  onClick={() => setAbierto(g.group)}
+                  title={g.group}
+                  aria-current={conRutaActual ? "true" : undefined}
+                  className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2.5 text-left text-[13px] font-medium leading-tight transition ${
+                    seleccionado
+                      ? "bg-blue-100 text-blue-900"
+                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                  }`}
+                >
+                  <span className="shrink-0">{g.items[0].icon}</span>
+                  <span className="line-clamp-2">{g.group}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Columna 2: submenús del módulo seleccionado */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Identidad nombre={nombre} apellido={apellido} rol={rol} />
+
+          <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+            {activo && (
+              <p className="px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {activo.group}
+              </p>
+            )}
+            {activo?.items.map((it) => (
+              <Link
+                key={it.href}
+                href={it.href}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  esRutaActiva(it.href, path) ? "bg-blue-50 text-blue-900" : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                {it.icon}
+                {it.label}
+              </Link>
+            ))}
+          </nav>
+
+          <Pie />
         </div>
       </div>
-
-      {/* Columna 2: submenús del módulo seleccionado */}
-      <div className="flex w-60 min-w-0 flex-col">
-        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
-          <Marca />
-          {rolesDisponibles && rolesDisponibles.length > 1 && (
-            <SelectorRol rol={rol} rolesDisponibles={rolesDisponibles} />
-          )}
-        </div>
-
-        <Identidad nombre={nombre} apellido={apellido} rol={rol} />
-
-        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {activo && (
-            <p className="px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-              {activo.group}
-            </p>
-          )}
-          {activo?.items.map((it) => (
-            <Link
-              key={it.href}
-              href={it.href}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                esRutaActiva(it.href, path) ? "bg-blue-50 text-blue-900" : "text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              {it.icon}
-              {it.label}
-            </Link>
-          ))}
-        </nav>
-
-        <Pie />
-      </div>
-    </>
+    </div>
   );
 }
 
