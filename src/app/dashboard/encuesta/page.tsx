@@ -8,13 +8,29 @@ import {
   ESCALA_LIKERT,
   type RespuestasEncuesta,
 } from "@/lib/encuestas";
+import { useBorrador } from "@/hooks/useBorrador";
+import AvisoBorrador from "@/components/AvisoBorrador";
 import { ClipboardList, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function EncuestaPertinenciaPage() {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
 
-  const [respuestas, setRespuestas] = useState<RespuestasEncuesta>({});
+  // Las respuestas se guardan en el dispositivo mientras se responden. Antes
+  // vivían solo en memoria y el envío es todo-o-nada: bastaba una recarga, un
+  // corte de internet o el cierre de sesión por inactividad para perder una
+  // encuesta entera a medio contestar.
+  //
+  // La clave lleva el id del usuario, así que en un equipo compartido nadie ve
+  // lo que empezó a escribir otro. Hasta conocerlo, la clave es null y no se
+  // guarda nada.
+  const [usuarioId, setUsuarioId] = useState<string | null>(null);
+  const claveBorrador = usuarioId ? `borrador:encuesta:pertinencia:${usuarioId}` : null;
+  const [respuestas, setRespuestas, borrador] = useBorrador<RespuestasEncuesta>(
+    claveBorrador,
+    {},
+  );
+
   const [enviando, setEnviando] = useState(false);
   const [ok, setOk] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +46,7 @@ export default function EncuestaPertinenciaPage() {
         router.replace("/login");
         return;
       }
+      setUsuarioId(user.id);
       const { data } = await supabase
         .from("encuestas_respuestas")
         .select("id")
@@ -59,6 +76,9 @@ export default function EncuestaPertinenciaPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error ?? "No se pudo registrar la encuesta");
+      // Ya está a salvo en el servidor: se retira el borrador para que
+      // «Responder de nuevo» empiece en blanco y no reviva lo ya enviado.
+      borrador.descartar();
       setOk(true);
       setYaRespondio(true);
     } catch (e) {
@@ -115,6 +135,8 @@ export default function EncuestaPertinenciaPage() {
           <p>Ya registraste una respuesta anteriormente. Puedes enviar una nueva si lo deseas.</p>
         </div>
       )}
+
+      <AvisoBorrador estado={borrador} onDescartar={() => setRespuestas({})} />
 
       <section className="card space-y-6 p-6">
         {likert.map((p, i) => (

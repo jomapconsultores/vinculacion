@@ -1,3 +1,6 @@
+/* ------------------------------------------------------------
+ * Desarrollado por Marco Antonio Posligua San Martín
+ * ------------------------------------------------------------ */
 // Cabeceras de seguridad HTTP (ausentes en producción: ver auditoría).
 //
 // CORRECCIÓN: la versión anterior de este archivo asumía que la app "no usa

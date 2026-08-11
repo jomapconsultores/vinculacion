@@ -1,3 +1,6 @@
+/* ------------------------------------------------------------
+ * Desarrollado por Marco Antonio Posligua San Martín
+ * ------------------------------------------------------------ */
 import Link from "next/link";
 import {
   GraduationCap,
@@ -263,8 +266,9 @@ export default function Home() {
       </section>
 
       <footer className="border-t border-slate-200 bg-white py-7">
-        <div className="mx-auto flex max-w-5xl items-center justify-center px-5">
+        <div className="mx-auto flex max-w-5xl flex-col items-center justify-center gap-2 px-5">
           <Logo size="sm" />
+          <p className="text-xs text-slate-400">Desarrollado por Marco Antonio Posligua San Martín</p>
         </div>
       </footer>
     </div>

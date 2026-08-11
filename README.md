@@ -70,3 +70,6 @@ desconexión) y un screening de ansiedad-estrés. Contenido e interpretación en
 Los resultados son visibles únicamente para la propia persona y para **autoridades / administrador**
 (`/admin/psicometria`, tabla `psicometria_resultados`, RLS con `is_staff()`); no son visibles para
 empleadores ni otros graduados. Es una herramienta de orientación, no un diagnóstico clínico.
+
+## Autor
+Desarrollado por **Marco Antonio Posligua San Martín**.

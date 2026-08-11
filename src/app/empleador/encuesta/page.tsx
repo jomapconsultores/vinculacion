@@ -8,13 +8,27 @@ import {
   ESCALA_LIKERT,
   type RespuestasEncuesta,
 } from "@/lib/encuestas";
+import { useBorrador } from "@/hooks/useBorrador";
+import AvisoBorrador from "@/components/AvisoBorrador";
 import { ClipboardCheck, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function EncuestaSatisfaccionPage() {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
 
-  const [respuestas, setRespuestas] = useState<RespuestasEncuesta>({});
+  // Igual que en la encuesta a graduados: lo respondido se guarda en el
+  // dispositivo. Aquí importa incluso más, porque quien contesta es un empleador
+  // externo a la universidad: si pierde la encuesta a medias, lo más probable
+  // es que no la vuelva a empezar.
+  const [usuarioId, setUsuarioId] = useState<string | null>(null);
+  const claveBorrador = usuarioId
+    ? `borrador:encuesta:satisfaccion_empleador:${usuarioId}`
+    : null;
+  const [respuestas, setRespuestas, borrador] = useBorrador<RespuestasEncuesta>(
+    claveBorrador,
+    {},
+  );
+
   const [enviando, setEnviando] = useState(false);
   const [ok, setOk] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +43,7 @@ export default function EncuestaSatisfaccionPage() {
         router.replace("/login");
         return;
       }
+      setUsuarioId(user.id);
       const { data } = await supabase
         .from("encuestas_respuestas")
         .select("id")
@@ -58,6 +73,8 @@ export default function EncuestaSatisfaccionPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error ?? "No se pudo registrar la encuesta");
+      // Ya está a salvo en el servidor: se retira el borrador.
+      borrador.descartar();
       setOk(true);
       setYaRespondio(true);
     } catch (e) {
@@ -114,6 +131,8 @@ export default function EncuestaSatisfaccionPage() {
           <p>Ya registraste una respuesta anteriormente. Puedes enviar una nueva si lo deseas.</p>
         </div>
       )}
+
+      <AvisoBorrador estado={borrador} onDescartar={() => setRespuestas({})} />
 
       <section className="card space-y-6 p-6">
         {likert.map((p, i) => (

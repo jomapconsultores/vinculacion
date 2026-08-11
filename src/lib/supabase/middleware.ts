@@ -42,10 +42,22 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Cierre de sesión por inactividad: 30 min sin ninguna petición.
+  // Cierre de sesión por inactividad: 20 min sin ninguna petición.
   // Se rastrea la última actividad en una cookie que se refresca en cada
   // request (ventana deslizante). Al vencer se cierra la sesión de Supabase.
-  const IDLE_MS = 30 * 60 * 1000;
+  //
+  // OJO con los dos plazos de abajo: NUNCA deben ser iguales. Antes lo eran
+  // (ambos 30 min) y eso hacía que este corte no se ejecutara jamás. El
+  // navegador borraba la cookie justo al cumplirse el plazo, así que cuando la
+  // condición `now - last > IDLE_MS` habría sido cierta ya no quedaba cookie
+  // que leer: `parseInt(undefined)` daba NaN, la guarda `!Number.isNaN(last)`
+  // era falsa, y el middleware seguía adelante recreando la cookie. La sesión
+  // no caducaba nunca por inactividad.
+  //
+  // La cookie vive ahora mucho más (24 h) que la ventana de inactividad, de
+  // modo que al volver tras 20 minutos la marca SIGUE ahí y el corte dispara.
+  const IDLE_MS = 20 * 60 * 1000;
+  const ACTIVITY_MAX_AGE_S = 24 * 60 * 60;
   const ACTIVITY_COOKIE = "last_activity";
   if (user) {
     const now = Date.now();
@@ -67,7 +79,7 @@ export async function updateSession(request: NextRequest) {
       sameSite: "lax",
       path: "/",
       secure: process.env.NODE_ENV === "production",
-      maxAge: 30 * 60,
+      maxAge: ACTIVITY_MAX_AGE_S,
     });
   }
 
