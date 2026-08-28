@@ -9,7 +9,11 @@
 // cliente dejaba de funcionar sitio-wide (formularios, botones, el ojito de
 // contraseña, etc.) sin ningún error visible en la UI. Se agrega
 // 'unsafe-inline' a script-src para restaurar la hidratación.
-const SUPABASE_HOST = "rfijjtvozncllqvocdat.supabase.co";
+// Servidor propio (Hetzner). Antes apuntaba al proyecto antiguo en la nube:
+// tras la migración de agosto de 2026 esa entrada era la única referencia viva
+// a la nube en producción, y además dejaba fuera de la CSP al servidor real,
+// de modo que cualquier llamada del cliente al Supabase propio se bloquearía.
+const SUPABASE_HOST = "supabase-co.pensamiento-libre.org";
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
