@@ -39,8 +39,15 @@ export async function POST() {
     const { nombres, apellidos } = partirNombre(nombreSenescyt);
     const upd: Record<string, any> = { nombres, apellidos };
     if (!prof?.titulo && titulos[0]?.titulo) upd.titulo = String(titulos[0].titulo);
-    const { error } = await supabase.from("profiles").update(upd).eq("id", user.id);
-    if (!error) nombre_actualizado = true;
+    // `nombre_actualizado` se le devuelve a quien importa, así que tiene que decir la
+    // verdad: sin `.select("id")`, un UPDATE que no toca ninguna fila vuelve con error
+    // null y esto marcaba como actualizado un nombre que seguía vacío.
+    const { data: filas, error } = await supabase
+      .from("profiles")
+      .update(upd)
+      .eq("id", user.id)
+      .select("id");
+    if (!error && filas && filas.length > 0) nombre_actualizado = true;
   }
 
   // Las dos lecturas de "ya existentes" no dependen entre sí: se piden en paralelo.

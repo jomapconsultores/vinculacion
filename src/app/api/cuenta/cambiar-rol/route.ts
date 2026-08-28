@@ -45,9 +45,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No tienes ese rol asignado." }, { status: 403 });
   }
 
-  const { error } = await supabase.from("profiles").update({ rol }).eq("id", user.id);
+  // Sin `.select("id")`, un UPDATE filtrado por RLS vuelve con error null: la respuesta
+  // decía que el rol había cambiado y el usuario seguía con el anterior, sin saber por qué.
+  const { data: filas, error } = await supabase
+    .from("profiles")
+    .update({ rol })
+    .eq("id", user.id)
+    .select("id");
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  if (!filas || filas.length === 0) {
+    return NextResponse.json({ error: "No se pudo cambiar el rol" }, { status: 404 });
   }
 
   return NextResponse.json({ ok: true, rol });

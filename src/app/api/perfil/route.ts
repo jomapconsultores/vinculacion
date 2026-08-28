@@ -47,8 +47,18 @@ export async function POST(req: Request) {
 
     const upd: Record<string, any> = {};
     for (const k of permitido) if (k in (datos || {})) upd[k] = datos[k];
-    const { error } = await supabase.from("profiles").update(upd).eq("id", user.id);
+    // El `.select("id")` y el cero de abajo son lo que distingue guardar de no guardar:
+    // un UPDATE que no toca ninguna fila —porque RLS lo filtra, o porque el perfil no
+    // existe— vuelve con error null, y sin comprobarlo esta ruta respondía `ok: true`
+    // sin haber escrito nada. Es el mismo patrón que ya usa la rama de más abajo.
+    const { data: filas, error } = await supabase
+      .from("profiles")
+      .update(upd)
+      .eq("id", user.id)
+      .select("id");
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!filas || filas.length === 0)
+      return NextResponse.json({ error: "No se pudo actualizar el perfil" }, { status: 404 });
     return NextResponse.json({ ok: true });
   }
 
